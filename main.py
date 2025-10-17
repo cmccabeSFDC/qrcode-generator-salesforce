@@ -137,7 +137,10 @@ async def add_company_logo(qr_img, logo_url):
 @app.get("/form/{record_id}")
 async def show_upload_form(record_id: str, company_logo_url: str = None, file_name: str = None):
     """Display the upload form for file submission"""
-    form_html = f"""
+    # Create logo HTML if company_logo_url is provided
+    logo_html = f'<img src="{company_logo_url}" alt="Company Logo" class="logo" onerror="this.style.display=\'none\'">' if company_logo_url else ''
+    
+    form_html = """
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -209,7 +212,7 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
     <body>
         <div class="container">
             <h1>File Upload</h1>
-            {f'<img src="{company_logo_url}" alt="Company Logo" class="logo" onerror="this.style.display=\'none\'">' if company_logo_url else ''}
+                    {logo_html}
             
             <form id="uploadForm" enctype="multipart/form-data">
                 <div class="form-group">
@@ -238,8 +241,8 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                 }}
                 
                 formData.append('file', file);
-                formData.append('record_id', '{record_id}');
-                formData.append('file_name', '{file_name or "uploaded_file"}');
+                        formData.append('record_id', '{record_id}');
+                        formData.append('file_name', '{file_name}');
                 
                 try {{
                     const response = await fetch('/upload', {{
@@ -268,7 +271,11 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
     </body>
     </html>
     """
-    return HTMLResponse(content=form_html)
+    return HTMLResponse(content=form_html.format(
+        logo_html=logo_html,
+        record_id=record_id,
+        file_name=file_name or "uploaded_file"
+    ))
 
 @app.post("/upload")
 async def upload_file(
