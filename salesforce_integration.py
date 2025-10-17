@@ -1,0 +1,206 @@
+"""
+Salesforce Integration Module for QR Code Generator
+Handles authentication and file uploads to Salesforce
+"""
+
+import requests
+import json
+import os
+from typing import Dict, Any, Optional
+
+class SalesforceAPI:
+    def __init__(self):
+        self.base_url = os.getenv('SALESFORCE_INSTANCE_URL', 'https://your-instance.salesforce.com')
+        self.access_token = os.getenv('SALESFORCE_ACCESS_TOKEN')
+        self.client_id = os.getenv('SALESFORCE_CLIENT_ID')
+        self.client_secret = os.getenv('SALESFORCE_CLIENT_SECRET')
+        self.username = os.getenv('SALESFORCE_USERNAME')
+        self.password = os.getenv('SALESFORCE_PASSWORD')
+        self.security_token = os.getenv('SALESFORCE_SECURITY_TOKEN')
+        
+    async def authenticate(self) -> bool:
+        """Authenticate with Salesforce using OAuth2"""
+        try:
+            auth_url = f"{self.base_url}/services/oauth2/token"
+            
+            data = {
+                'grant_type': 'password',
+                'client_id': self.client_id,
+                'client_secret': self.client_secret,
+                'username': self.username,
+                'password': f"{self.password}{self.security_token}"
+            }
+            
+            response = requests.post(auth_url, data=data)
+            response.raise_for_status()
+            
+            auth_data = response.json()
+            self.access_token = auth_data['access_token']
+            self.base_url = auth_data['instance_url']
+            
+            return True
+            
+        except Exception as e:
+            print(f"Salesforce authentication failed: {str(e)}")
+            return False
+    
+    async def upload_file_to_record(self, record_id: str, file_path: str, file_name: str) -> Dict[str, Any]:
+        """Upload a file to a Salesforce record as a ContentDocument"""
+        try:
+            if not self.access_token:
+                if not await self.authenticate():
+                    return {"status": "error", "message": "Authentication failed"}
+            
+            # Step 1: Create ContentVersion
+            content_version = await self.create_content_version(file_path, file_name)
+            if content_version.get('status') == 'error':
+                return content_version
+            
+            # Step 2: Get ContentDocument ID from ContentVersion
+            content_document_id = await self.get_content_document_id(content_version['id'])
+            if not content_document_id:
+                return {"status": "error", "message": "Failed to get ContentDocument ID"}
+            
+            # Step 3: Create ContentDocumentLink to associate with record
+            link_result = await self.create_content_document_link(record_id, content_document_id)
+            if link_result.get('status') == 'error':
+                return link_result
+            
+            return {
+                "status": "success",
+                "message": f"File {file_name} successfully attached to record {record_id}",
+                "content_document_id": content_document_id,
+                "content_version_id": content_version['id']
+            }
+            
+        except Exception as e:
+            return {"status": "error", "message": f"Upload failed: {str(e)}"}
+    
+    async def create_content_version(self, file_path: str, file_name: str) -> Dict[str, Any]:
+        """Create a ContentVersion record in Salesforce"""
+        try:
+            # Read file content
+            with open(file_path, 'rb') as file:
+                file_content = file.read()
+            
+            # Encode file content to base64
+            import base64
+            file_data = base64.b64encode(file_content).decode('utf-8')
+            
+            # Prepare ContentVersion data
+            content_version_data = {
+                "Title": file_name,
+                "PathOnClient": file_name,
+                "VersionData": file_data,
+                "IsMajorVersion": True
+            }
+            
+            # Make API call
+            url = f"{self.base_url}/services/data/v58.0/sobjects/ContentVersion"
+            headers = {
+                'Authorization': f'Bearer {self.access_token}',
+                'Content-Type': 'application/json'
+            }
+            
+            response = requests.post(url, headers=headers, json=content_version_data)
+            response.raise_for_status()
+            
+            result = response.json()
+            return {
+                "status": "success",
+                "id": result['id']
+            }
+            
+        except Exception as e:
+            return {"status": "error", "message": f"ContentVersion creation failed: {str(e)}"}
+    
+    async def get_content_document_id(self, content_version_id: str) -> Optional[str]:
+        """Get ContentDocument ID from ContentVersion ID"""
+        try:
+            url = f"{self.base_url}/services/data/v58.0/sobjects/ContentVersion/{content_version_id}"
+            headers = {
+                'Authorization': f'Bearer {self.access_token}',
+                'Content-Type': 'application/json'
+            }
+            
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            
+            data = response.json()
+            return data.get('ContentDocumentId')
+            
+        except Exception as e:
+            print(f"Failed to get ContentDocument ID: {str(e)}")
+            return None
+    
+    async def create_content_document_link(self, record_id: str, content_document_id: str) -> Dict[str, Any]:
+        """Create ContentDocumentLink to associate file with record"""
+        try:
+            link_data = {
+                "ContentDocumentId": content_document_id,
+                "LinkedEntityId": record_id,
+                "ShareType": "V"
+            }
+            
+            url = f"{self.base_url}/services/data/v58.0/sobjects/ContentDocumentLink"
+            headers = {
+                'Authorization': f'Bearer {self.access_token}',
+                'Content-Type': 'application/json'
+            }
+            
+            response = requests.post(url, headers=headers, json=link_data)
+            response.raise_for_status()
+            
+            result = response.json()
+            return {
+                "status": "success",
+                "id": result['id']
+            }
+            
+        except Exception as e:
+            return {"status": "error", "message": f"ContentDocumentLink creation failed: {str(e)}"}
+    
+    async def get_record_info(self, record_id: str) -> Dict[str, Any]:
+        """Get basic information about a Salesforce record"""
+        try:
+            if not self.access_token:
+                if not await self.authenticate():
+                    return {"status": "error", "message": "Authentication failed"}
+            
+            # Determine object type from record ID prefix
+            object_type = self.get_object_type_from_id(record_id)
+            
+            url = f"{self.base_url}/services/data/v58.0/sobjects/{object_type}/{record_id}"
+            headers = {
+                'Authorization': f'Bearer {self.access_token}',
+                'Content-Type': 'application/json'
+            }
+            
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            
+            return {
+                "status": "success",
+                "data": response.json()
+            }
+            
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to get record info: {str(e)}"}
+    
+    def get_object_type_from_id(self, record_id: str) -> str:
+        """Determine Salesforce object type from record ID prefix"""
+        prefix_map = {
+            '001': 'Account',
+            '003': 'Contact',
+            '00Q': 'Lead',
+            '006': 'Opportunity',
+            '00T': 'Task',
+            '00U': 'Event',
+            'a00': 'Custom_Object__c'  # Example custom object
+        }
+        
+        prefix = record_id[:3]
+        return prefix_map.get(prefix, 'Unknown')
+
+# Global instance
+salesforce_api = SalesforceAPI()
