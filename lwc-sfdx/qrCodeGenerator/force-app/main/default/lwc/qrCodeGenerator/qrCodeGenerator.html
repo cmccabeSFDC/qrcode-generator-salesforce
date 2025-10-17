@@ -1,0 +1,108 @@
+<template>
+    <lightning-card title="QR Code Generator" icon-name="utility:qr_code">
+        <div class="slds-p-around_medium">
+            <!-- Input Fields -->
+            <div class="slds-grid slds-wrap slds-gutters">
+                <div class="slds-col slds-size_1-of-1">
+                    <lightning-input
+                        type="url"
+                        label="Company Logo URL"
+                        value={companyLogoUrl}
+                        onchange={handleLogoUrlChange}
+                        placeholder="https://example.com/logo.png"
+                    ></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1">
+                    <lightning-input
+                        type="text"
+                        label="File Name"
+                        value={fileName}
+                        onchange={handleFileNameChange}
+                        placeholder="Enter file name"
+                        required
+                    ></lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-1">
+                    <lightning-input
+                        type="text"
+                        label="Record ID"
+                        value={recordId}
+                        onchange={handleRecordIdChange}
+                        placeholder="Enter Salesforce Record ID"
+                        required
+                    ></lightning-input>
+                </div>
+            </div>
+
+            <!-- Generate Button -->
+            <div class="slds-m-top_medium">
+                <lightning-button
+                    variant="brand"
+                    label="Generate QR Code"
+                    onclick={generateQRCode}
+                    disabled={isButtonDisabled}
+                    class="slds-m-right_x-small"
+                ></lightning-button>
+                <lightning-button
+                    variant="neutral"
+                    label="Clear"
+                    onclick={clearForm}
+                ></lightning-button>
+            </div>
+
+            <!-- Loading Spinner -->
+            <template if:true={isLoading}>
+                <div class="slds-m-top_medium slds-text-align_center">
+                    <lightning-spinner alternative-text="Generating QR Code..." size="medium"></lightning-spinner>
+                </div>
+            </template>
+
+            <!-- Error Message -->
+            <template if:true={errorMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error slds-m-top_medium">
+                    <span class="slds-assistive-text">Error</span>
+                    <span class="slds-icon_container slds-icon-utility-error slds-m-right_x-small">
+                        <lightning-icon icon-name="utility:error" size="x-small"></lightning-icon>
+                    </span>
+                    {errorMessage}
+                </div>
+            </template>
+
+            <!-- Success Message -->
+            <template if:true={successMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_success slds-m-top_medium">
+                    <span class="slds-assistive-text">Success</span>
+                    <span class="slds-icon_container slds-icon-utility-success slds-m-right_x-small">
+                        <lightning-icon icon-name="utility:success" size="x-small"></lightning-icon>
+                    </span>
+                    {successMessage}
+                </div>
+            </template>
+
+            <!-- QR Code Display -->
+            <template if:true={showQRCode}>
+                <div class="slds-m-top_medium">
+                    <div class="slds-form-element">
+                        <label class="slds-form-element__label">Generated QR Code</label>
+                        <div class="slds-form-element__control">
+                            <div class="qr-code-container">
+                                <img src={qrCodeImageUrl} alt="Generated QR Code" class="qr-code-image" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Download Button -->
+            <template if:true={showQRCode}>
+                <div class="slds-m-top_medium">
+                    <lightning-button
+                        variant="brand"
+                        label="Download QR Code"
+                        onclick={downloadQRCode}
+                    ></lightning-button>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>
