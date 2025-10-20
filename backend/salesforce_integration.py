@@ -21,7 +21,16 @@ class SalesforceAPI:
     async def authenticate(self) -> bool:
         """Authenticate with Salesforce using OAuth2"""
         try:
+            print(f"=== SALESFORCE AUTHENTICATION DEBUG ===")
+            print(f"Base URL: {self.base_url}")
+            print(f"Client ID: {'SET' if self.client_id else 'NOT SET'}")
+            print(f"Client Secret: {'SET' if self.client_secret else 'NOT SET'}")
+            print(f"Username: {'SET' if self.username else 'NOT SET'}")
+            print(f"Password: {'SET' if self.password else 'NOT SET'}")
+            print(f"Security Token: {'SET' if self.security_token else 'NOT SET'}")
+            
             auth_url = f"{self.base_url}/services/oauth2/token"
+            print(f"Auth URL: {auth_url}")
             
             data = {
                 'grant_type': 'password',
@@ -31,41 +40,69 @@ class SalesforceAPI:
                 'password': f"{self.password}{self.security_token}"
             }
             
+            print(f"Auth data: {data}")
+            
             response = requests.post(auth_url, data=data)
+            print(f"Response status: {response.status_code}")
+            print(f"Response headers: {dict(response.headers)}")
+            print(f"Response text: {response.text}")
+            
             response.raise_for_status()
             
             auth_data = response.json()
             self.access_token = auth_data['access_token']
             self.base_url = auth_data['instance_url']
             
+            print(f"Authentication successful!")
+            print(f"Access token: {'SET' if self.access_token else 'NOT SET'}")
+            print(f"Instance URL: {self.base_url}")
+            
             return True
             
         except Exception as e:
-            print(f"Salesforce authentication failed: {str(e)}")
+            print(f"=== SALESFORCE AUTHENTICATION ERROR ===")
+            print(f"Error: {str(e)}")
+            print(f"Error type: {type(e).__name__}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
             return False
     
     async def upload_file_to_record(self, record_id: str, file_path: str, file_name: str) -> Dict[str, Any]:
         """Upload a file to a Salesforce record as a ContentDocument"""
         try:
+            print(f"=== UPLOAD FILE TO RECORD DEBUG ===")
+            print(f"Record ID: {record_id}")
+            print(f"File path: {file_path}")
+            print(f"File name: {file_name}")
+            print(f"Access token: {'SET' if self.access_token else 'NOT SET'}")
+            
             if not self.access_token:
+                print(f"Access token not available, attempting authentication...")
                 if not await self.authenticate():
                     return {"status": "error", "message": "Authentication failed"}
             
             # Step 1: Create ContentVersion
+            print(f"=== STEP 1: Creating ContentVersion ===")
             content_version = await self.create_content_version(file_path, file_name)
+            print(f"ContentVersion result: {content_version}")
             if content_version.get('status') == 'error':
                 return content_version
             
             # Step 2: Get ContentDocument ID from ContentVersion
+            print(f"=== STEP 2: Getting ContentDocument ID ===")
             content_document_id = await self.get_content_document_id(content_version['id'])
+            print(f"ContentDocument ID: {content_document_id}")
             if not content_document_id:
                 return {"status": "error", "message": "Failed to get ContentDocument ID"}
             
             # Step 3: Create ContentDocumentLink to associate with record
+            print(f"=== STEP 3: Creating ContentDocumentLink ===")
             link_result = await self.create_content_document_link(record_id, content_document_id)
+            print(f"ContentDocumentLink result: {link_result}")
             if link_result.get('status') == 'error':
                 return link_result
             
+            print(f"=== UPLOAD SUCCESSFUL ===")
             return {
                 "status": "success",
                 "message": f"File {file_name} successfully attached to record {record_id}",
@@ -74,6 +111,11 @@ class SalesforceAPI:
             }
             
         except Exception as e:
+            print(f"=== UPLOAD FILE ERROR ===")
+            print(f"Error: {str(e)}")
+            print(f"Error type: {type(e).__name__}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
             return {"status": "error", "message": f"Upload failed: {str(e)}"}
     
     async def create_content_version(self, file_path: str, file_name: str) -> Dict[str, Any]:

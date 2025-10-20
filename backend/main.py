@@ -278,18 +278,38 @@ async def upload_file(
 ):
     """Handle file upload and send to Salesforce"""
     try:
+        print(f"=== FILE UPLOAD DEBUG START ===")
+        print(f"Received file: {file.filename}")
+        print(f"Record ID: {record_id}")
+        print(f"File name: {file_name}")
+        
         # Generate unique filename
         file_extension = os.path.splitext(file.filename)[1]
         unique_filename = f"{file_name}_{uuid.uuid4().hex[:8]}{file_extension}"
+        print(f"Unique filename: {unique_filename}")
         
         # Save file locally
         file_path = f"uploads/{unique_filename}"
         with open(file_path, "wb") as buffer:
             content = await file.read()
             buffer.write(content)
+        print(f"File saved locally at: {file_path}")
+        print(f"File size: {len(content)} bytes")
+        
+        # Check Salesforce environment variables
+        print(f"=== SALESFORCE ENVIRONMENT CHECK ===")
+        print(f"SALESFORCE_INSTANCE_URL: {os.getenv('SALESFORCE_INSTANCE_URL', 'NOT SET')}")
+        print(f"SALESFORCE_ACCESS_TOKEN: {'SET' if os.getenv('SALESFORCE_ACCESS_TOKEN') else 'NOT SET'}")
+        print(f"SALESFORCE_CLIENT_ID: {'SET' if os.getenv('SALESFORCE_CLIENT_ID') else 'NOT SET'}")
+        print(f"SALESFORCE_CLIENT_SECRET: {'SET' if os.getenv('SALESFORCE_CLIENT_SECRET') else 'NOT SET'}")
+        print(f"SALESFORCE_USERNAME: {'SET' if os.getenv('SALESFORCE_USERNAME') else 'NOT SET'}")
+        print(f"SALESFORCE_PASSWORD: {'SET' if os.getenv('SALESFORCE_PASSWORD') else 'NOT SET'}")
+        print(f"SALESFORCE_SECURITY_TOKEN: {'SET' if os.getenv('SALESFORCE_SECURITY_TOKEN') else 'NOT SET'}")
         
         # Integrate with Salesforce API to attach the file
+        print(f"=== CALLING SALESFORCE API ===")
         salesforce_result = await salesforce_api.upload_file_to_record(record_id, file_path, file_name)
+        print(f"Salesforce result: {salesforce_result}")
         
         return {
             "message": "File uploaded successfully",
@@ -299,6 +319,11 @@ async def upload_file(
         }
         
     except Exception as e:
+        print(f"=== UPLOAD ERROR ===")
+        print(f"Error: {str(e)}")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
 
 # This function is now handled by the Salesforce integration module
