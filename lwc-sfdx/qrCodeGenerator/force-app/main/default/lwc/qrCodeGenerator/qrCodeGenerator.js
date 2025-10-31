@@ -1,50 +1,41 @@
 import { LightningElement, track, api } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import generatePngBase64 from '@salesforce/apex/QRCodeService.generatePngBase64';
 
 export default class QrCodeGenerator extends LightningElement {
-    @track companyLogoUrl = '';
-    @track fileName = '';
-    @track recordId = '';
+    @api companyLogoUrl = '';
+    @api fileName = '';
+    @api recordId = '';
     @track isLoading = false;
     @track errorMessage = '';
     @track successMessage = '';
     @track qrCodeImageUrl = '';
     @track showQRCode = false;
+    @track formUrl = '';
 
     // Heroku microservice endpoint - replace with your actual Heroku app URL
-    herokuEndpoint = 'https://your-qr-generator-app.herokuapp.com';
+    herokuEndpoint = 'https://democomponent-qrcode-generator-c48b26ff05fc.herokuapp.com';
 
-    // Get current record ID from page context
+    // Record ID is automatically populated from the page context via @api recordId
     connectedCallback() {
-        // This will be populated by the page context or passed as a parameter
-        // For now, we'll use a placeholder
-        this.recordId = this.getRecordId() || '001000000000000';
-    }
-
-    getRecordId() {
-        // This method should be implemented to get the current record ID
-        // from the Lightning page context
-        return null; // Placeholder
+        // The recordId will be automatically populated by Salesforce
+        // when the component is placed on a record page
+        console.log('Record ID automatically populated:', this.recordId);
+        // Force refresh to ensure changes are applied
     }
 
     get isButtonDisabled() {
         return this.isLoading || !this.fileName || !this.recordId;
     }
 
-    handleLogoUrlChange(event) {
-        this.companyLogoUrl = event.target.value;
-        this.clearMessages();
+    get displayCompanyLogo() {
+        return this.companyLogoUrl || 'Not configured';
     }
 
-    handleFileNameChange(event) {
-        this.fileName = event.target.value;
-        this.clearMessages();
+    get displayFileName() {
+        return this.fileName || 'Not configured';
     }
 
-    handleRecordIdChange(event) {
-        this.recordId = event.target.value;
-        this.clearMessages();
-    }
 
     clearMessages() {
         this.errorMessage = '';
@@ -60,6 +51,8 @@ export default class QrCodeGenerator extends LightningElement {
     }
 
     async generateQRCode() {
+        console.log('generate QR code button fired');
+        
         if (!this.fileName) {
             this.errorMessage = 'Please enter a file name.';
             return;
@@ -74,12 +67,19 @@ export default class QrCodeGenerator extends LightningElement {
         this.clearMessages();
 
         try {
+            console.log('Input values:', {
+                companyLogoUrl: this.companyLogoUrl,
+                fileName: this.fileName,
+                recordId: this.recordId
+            });
+            
             // Create the form URL that the QR code will point to
-            const formUrl = `${this.herokuEndpoint}/form/${this.recordId}?company_logo_url=${encodeURIComponent(this.companyLogoUrl)}&file_name=${encodeURIComponent(this.fileName)}`;
+            this.formUrl = `${this.herokuEndpoint}/form/${this.recordId}?company_logo_url=${encodeURIComponent(this.companyLogoUrl)}&file_name=${encodeURIComponent(this.fileName)}`;
+            console.log('Form URL created:', this.formUrl);
             
             // Prepare the data for the QR code
             const qrData = {
-                data: formUrl,
+                data: this.formUrl,
                 company_logo_url: this.companyLogoUrl,
                 file_name: this.fileName,
                 record_id: this.recordId,
@@ -88,23 +88,39 @@ export default class QrCodeGenerator extends LightningElement {
                 fill_color: 'black',
                 back_color: 'white'
             };
-
-            // Call the Heroku microservice
-            const response = await this.callHerokuService(qrData);
             
-            if (response.ok) {
-                // Convert the response to a blob URL for display
-                const blob = await response.blob();
-                this.qrCodeImageUrl = URL.createObjectURL(blob);
-                this.showQRCode = true;
-                this.successMessage = 'QR Code generated successfully! This QR code will open a file upload form.';
-                
-                this.showToast('Success', 'QR Code generated successfully!', 'success');
-            } else {
-                const errorData = await response.json();
-                this.errorMessage = errorData.detail || 'Failed to generate QR code.';
-                this.showToast('Error', this.errorMessage, 'error');
-            }
+            // Print out each parameter that will be sent to Heroku
+            console.log('=== PARAMETERS FOR HEROKU APPLICATION ===');
+            console.log('data (form URL):', qrData.data);
+            console.log('company_logo_url:', qrData.company_logo_url);
+            console.log('file_name:', qrData.file_name);
+            console.log('record_id:', qrData.record_id);
+            console.log('size:', qrData.size);
+            console.log('border:', qrData.border);
+            console.log('fill_color:', qrData.fill_color);
+            console.log('back_color:', qrData.back_color);
+            console.log('=== END PARAMETERS ===');
+            
+            console.log('QR Data prepared:', qrData);
+
+            // Call server-side Apex (uses Named Credential) to avoid CSP/CORS
+            console.log('Calling Apex QRCodeService.generatePngBase64...');
+            const base64Png = await generatePngBase64({
+                data: qrData.data,
+                company_logo_url: qrData.company_logo_url,
+                file_name: qrData.file_name,
+                record_id: qrData.record_id,
+                size: qrData.size,
+                border: qrData.border,
+                fill_color: qrData.fill_color,
+                back_color: qrData.back_color
+            });
+
+            const blob = this.base64ToBlob(base64Png, 'image/png');
+            this.qrCodeImageUrl = URL.createObjectURL(blob);
+            this.showQRCode = true;
+            this.successMessage = 'QR Code generated successfully! This QR code will open a file upload form.';
+            this.showToast('Success', 'QR Code generated successfully!', 'success');
         } catch (error) {
             console.error('Error generating QR code:', error);
             this.errorMessage = 'An error occurred while generating the QR code. Please try again.';
@@ -114,22 +130,15 @@ export default class QrCodeGenerator extends LightningElement {
         }
     }
 
-    async callHerokuService(data) {
-        const requestBody = {
-            data: JSON.stringify(data),
-            size: 10,
-            border: 4,
-            fill_color: 'black',
-            back_color: 'white'
-        };
-
-        return fetch(`${this.herokuEndpoint}/generate`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody)
-        });
+    // Convert base64 string to Blob for image rendering
+    base64ToBlob(base64, mimeType) {
+        const binaryString = atob(base64);
+        const byteNumbers = new Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            byteNumbers[i] = binaryString.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mimeType });
     }
 
     downloadQRCode() {
@@ -143,6 +152,13 @@ export default class QrCodeGenerator extends LightningElement {
             document.body.removeChild(link);
             
             this.showToast('Success', 'QR Code downloaded successfully!', 'success');
+        }
+    }
+
+    linkToForm() {
+        // Open the form URL in a new window
+        if (this.formUrl) {
+            window.open(this.formUrl, '_blank');
         }
     }
 

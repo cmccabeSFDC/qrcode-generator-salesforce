@@ -11,12 +11,9 @@
     </targets>
     <targetConfigs>
         <targetConfig targets="lightning__RecordPage">
-            <objects>
-                <object>Account</object>
-                <object>Contact</object>
-                <object>Lead</object>
-                <object>Opportunity</object>
-            </objects>
+            <property name="recordId" type="String" label="Record ID" description="Automatically populated with the current record's ID." default="{!recordId}"/>
+            <property name="companyLogoUrl" type="String" label="Company Logo URL" description="URL for the company logo to display on the QR code and form." default=""/>
+            <property name="fileName" type="String" label="File Name" description="Name for the file that will be uploaded." default=""/>
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>

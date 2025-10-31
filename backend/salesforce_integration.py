@@ -11,6 +11,7 @@ from typing import Dict, Any, Optional
 class SalesforceAPI:
     def __init__(self):
         self.base_url = os.getenv('SALESFORCE_INSTANCE_URL', 'https://your-instance.salesforce.com')
+        self.session_id = os.getenv('SALESFORCE_SESSION_ID')
         self.access_token = os.getenv('SALESFORCE_ACCESS_TOKEN')
         self.client_id = os.getenv('SALESFORCE_CLIENT_ID')
         self.client_secret = os.getenv('SALESFORCE_CLIENT_SECRET')
@@ -19,45 +20,73 @@ class SalesforceAPI:
         self.security_token = os.getenv('SALESFORCE_SECURITY_TOKEN')
         
     async def authenticate(self) -> bool:
-        """Authenticate with Salesforce using OAuth2"""
+        """Authenticate with Salesforce using Session ID or OAuth2"""
         try:
             print(f"=== SALESFORCE AUTHENTICATION DEBUG ===")
             print(f"Base URL: {self.base_url}")
+            print(f"Session ID: {'SET' if self.session_id else 'NOT SET'}")
             print(f"Client ID: {'SET' if self.client_id else 'NOT SET'}")
             print(f"Client Secret: {'SET' if self.client_secret else 'NOT SET'}")
             print(f"Username: {'SET' if self.username else 'NOT SET'}")
             print(f"Password: {'SET' if self.password else 'NOT SET'}")
             print(f"Security Token: {'SET' if self.security_token else 'NOT SET'}")
             
-            auth_url = f"{self.base_url}/services/oauth2/token"
-            print(f"Auth URL: {auth_url}")
+            # Try Session ID first (preferred for API-only users)
+            if self.session_id:
+                print(f"Using Session ID authentication")
+                self.access_token = self.session_id
+                print(f"Session ID authentication successful!")
+                return True
             
-            data = {
-                'grant_type': 'password',
-                'client_id': self.client_id,
-                'client_secret': self.client_secret,
-                'username': self.username,
-                'password': f"{self.password}{self.security_token}"
-            }
+            # Fallback to OAuth2 if no Session ID
+            if self.client_id and self.client_secret and self.username and self.password:
+                print(f"Using OAuth2 authentication")
+                auth_url = f"{self.base_url}/services/oauth2/token"
+                print(f"Auth URL: {auth_url}")
+                
+                # Build password - include security token if provided
+                password = self.password
+                if self.security_token:
+                    password = f"{self.password}{self.security_token}"
+                
+                data = {
+                    'grant_type': 'password',
+                    'client_id': self.client_id,
+                    'client_secret': self.client_secret,
+                    'username': self.username,
+                    'password': password
+                }
+                
+                # Don't log the actual password, but log the data structure
+                print(f"Auth data (password hidden): grant_type={data['grant_type']}, client_id={data['client_id']}, username={data['username']}")
+                
+                response = requests.post(auth_url, data=data)
+                print(f"Response status: {response.status_code}")
+                print(f"Response headers: {dict(response.headers)}")
+                print(f"Response text: {response.text}")
+                
+                # If 400 error, show detailed debug info
+                if response.status_code == 400:
+                    print(f"=== OAuth2 400 ERROR DEBUG ===")
+                    print(f"Auth URL: {auth_url}")
+                    print(f"Request headers: {dict(response.request.headers)}")
+                    print(f"Full response: {response.text}")
+                    print(f"Request data (password hidden): grant_type=password, client_id={self.client_id}, username={self.username}")
+                
+                response.raise_for_status()
+                
+                auth_data = response.json()
+                self.access_token = auth_data['access_token']
+                self.base_url = auth_data['instance_url']
+                
+                print(f"OAuth2 authentication successful!")
+                print(f"Access token: {'SET' if self.access_token else 'NOT SET'}")
+                print(f"Instance URL: {self.base_url}")
+                
+                return True
             
-            print(f"Auth data: {data}")
-            
-            response = requests.post(auth_url, data=data)
-            print(f"Response status: {response.status_code}")
-            print(f"Response headers: {dict(response.headers)}")
-            print(f"Response text: {response.text}")
-            
-            response.raise_for_status()
-            
-            auth_data = response.json()
-            self.access_token = auth_data['access_token']
-            self.base_url = auth_data['instance_url']
-            
-            print(f"Authentication successful!")
-            print(f"Access token: {'SET' if self.access_token else 'NOT SET'}")
-            print(f"Instance URL: {self.base_url}")
-            
-            return True
+            print(f"No valid authentication method available")
+            return False
             
         except Exception as e:
             print(f"=== SALESFORCE AUTHENTICATION ERROR ===")

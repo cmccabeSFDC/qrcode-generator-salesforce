@@ -1,52 +1,21 @@
 <template>
     <lightning-card title="QR Code Generator" icon-name="utility:qr_code">
         <div class="slds-p-around_medium">
-            <!-- Input Fields -->
-            <div class="slds-grid slds-wrap slds-gutters">
-                <div class="slds-col slds-size_1-of-1">
-                    <lightning-input
-                        type="url"
-                        label="Company Logo URL"
-                        value={companyLogoUrl}
-                        onchange={handleLogoUrlChange}
-                        placeholder="https://example.com/logo.png"
-                    ></lightning-input>
-                </div>
-                <div class="slds-col slds-size_1-of-1">
-                    <lightning-input
-                        type="text"
-                        label="File Name"
-                        value={fileName}
-                        onchange={handleFileNameChange}
-                        placeholder="Enter file name"
-                        required
-                    ></lightning-input>
-                </div>
-                <div class="slds-col slds-size_1-of-1">
-                    <lightning-input
-                        type="text"
-                        label="Record ID"
-                        value={recordId}
-                        onchange={handleRecordIdChange}
-                        placeholder="Enter Salesforce Record ID"
-                        required
-                    ></lightning-input>
+            <!-- Configuration Display -->
+            <div class="slds-m-bottom_medium">
+                <div class="slds-text-body_small slds-text-color_weak">
+                    <strong>Company Logo:</strong> {displayCompanyLogo}<br/>
+                    <strong>File Name:</strong> {displayFileName}
                 </div>
             </div>
 
-            <!-- Generate Button -->
-            <div class="slds-m-top_medium">
+            <!-- Generate Button - Centered -->
+            <div class="slds-text-align_center slds-m-bottom_medium">
                 <lightning-button
                     variant="brand"
                     label="Generate QR Code"
                     onclick={generateQRCode}
                     disabled={isButtonDisabled}
-                    class="slds-m-right_x-small"
-                ></lightning-button>
-                <lightning-button
-                    variant="neutral"
-                    label="Clear"
-                    onclick={clearForm}
                 ></lightning-button>
             </div>
 
@@ -93,13 +62,19 @@
                 </div>
             </template>
 
-            <!-- Download Button -->
+            <!-- Action Buttons -->
             <template if:true={showQRCode}>
-                <div class="slds-m-top_medium">
+                <div class="slds-m-top_medium slds-text-align_center">
                     <lightning-button
                         variant="brand"
                         label="Download QR Code"
                         onclick={downloadQRCode}
+                        class="slds-m-right_x-small"
+                    ></lightning-button>
+                    <lightning-button
+                        variant="neutral"
+                        label="Link to Form"
+                        onclick={linkToForm}
                     ></lightning-button>
                 </div>
             </template>
