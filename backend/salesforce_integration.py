@@ -61,17 +61,20 @@ class SalesforceAPI:
                 print(f"Auth data (password hidden): grant_type={data['grant_type']}, client_id={data['client_id']}, username={data['username']}")
                 
                 response = requests.post(auth_url, data=data)
-                print(f"Response status: {response.status_code}")
-                print(f"Response headers: {dict(response.headers)}")
-                print(f"Response text: {response.text}")
+                print(f"Response status: {response.status_code}", flush=True)
+                print(f"Response headers: {dict(response.headers)}", flush=True)
+                print(f"Response text: {response.text}", flush=True)
                 
-                # If 400 error, show detailed debug info
+                # If 400 error, show detailed debug info BEFORE raising exception
                 if response.status_code == 400:
-                    print(f"=== OAuth2 400 ERROR DEBUG ===")
-                    print(f"Auth URL: {auth_url}")
-                    print(f"Request headers: {dict(response.request.headers)}")
-                    print(f"Full response: {response.text}")
-                    print(f"Request data (password hidden): grant_type=password, client_id={self.client_id}, username={self.username}")
+                    print(f"=== OAuth2 400 ERROR DEBUG ===", flush=True)
+                    print(f"Auth URL: {auth_url}", flush=True)
+                    print(f"Request headers: {dict(response.request.headers)}", flush=True)
+                    print(f"Full response: {response.text}", flush=True)
+                    print(f"Request data (password hidden): grant_type=password, client_id={self.client_id}, username={self.username}", flush=True)
+                    # Don't raise exception here, return error details instead
+                    print(f"ERROR: OAuth2 authentication failed with 400 error", flush=True)
+                    return False
                 
                 response.raise_for_status()
                 
