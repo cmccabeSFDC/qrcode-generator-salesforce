@@ -14,6 +14,7 @@ export default class QrCodeGenerator extends LightningElement {
     @track formUrl = '';
 
     // Heroku microservice endpoint - replace with your actual Heroku app URL
+    // Repository: https://github.com/cmccabeSFDC/qrcode-generator-salesforce.git
     herokuEndpoint = 'https://democomponent-qrcode-generator-c48b26ff05fc.herokuapp.com';
 
     // Record ID is automatically populated from the page context via @api recordId

@@ -28,6 +28,7 @@ public with sharing class QRCodeService {
             
             System.debug('Request object: ' + JSON.serialize(req));
             
+            // Repository: https://github.com/cmccabeSFDC/qrcode-generator-salesforce.git
             HttpRequest httpReq = new HttpRequest();
             httpReq.setMethod('POST');
             httpReq.setEndpoint('https://democomponent-qrcode-generator-c48b26ff05fc.herokuapp.com/generate');

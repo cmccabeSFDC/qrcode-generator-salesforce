@@ -1,5 +1,7 @@
 # QR Code Generator with Salesforce Integration
 
+**Repository**: [https://github.com/cmccabeSFDC/qrcode-generator-salesforce.git](https://github.com/cmccabeSFDC/qrcode-generator-salesforce.git)
+
 A comprehensive solution for generating QR codes that link to file upload forms, with full Salesforce integration for automatic file attachment to records.
 
 ## 🚀 Features
