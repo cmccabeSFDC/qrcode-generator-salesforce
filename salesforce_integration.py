@@ -84,15 +84,168 @@ class SalesforceAPI:
                 
                 # If 400 error, show detailed debug info BEFORE raising exception
                 if response.status_code == 400:
-                    print(f"=== OAuth2 400 ERROR DEBUG ===", flush=True)
-                    print(f"Auth URL: {auth_url}", flush=True)
-                    print(f"Request headers: {dict(response.request.headers)}", flush=True)
-                    print(f"Full response: {response.text}", flush=True)
-                    print(f"Request data (password hidden): grant_type=password, client_id={self.client_id}, username={self.username}", flush=True)
-                    print(f"Request URL: {response.request.url}", flush=True)
-                    print(f"Request method: {response.request.method}", flush=True)
-                    # Don't raise exception here, return error details instead
+                    print(f"\n{'='*80}", flush=True)
+                    print(f"=== OAuth2 400 BAD REQUEST - DETAILED ERROR ANALYSIS ===", flush=True)
+                    print(f"{'='*80}\n", flush=True)
+                    
+                    # Parse error response
+                    error_data = {}
+                    error_code = None
+                    error_description = None
+                    
+                    try:
+                        error_data = response.json()
+                        error_code = error_data.get('error', 'unknown_error')
+                        error_description = error_data.get('error_description', 'No description provided')
+                    except (ValueError, json.JSONDecodeError):
+                        # If not JSON, try to extract error from text
+                        error_text = response.text
+                        print(f"⚠️  Response is not JSON format. Raw response:", flush=True)
+                        print(f"   {error_text}", flush=True)
+                        error_code = "non_json_response"
+                        error_description = error_text[:200]  # First 200 chars
+                    
+                    print(f"📋 ERROR SUMMARY:", flush=True)
+                    print(f"   Error Code: {error_code}", flush=True)
+                    print(f"   Error Description: {error_description}", flush=True)
+                    print(f"\n", flush=True)
+                    
+                    # Map error codes to specific issues and solutions
+                    error_explanations = {
+                        'invalid_grant': {
+                            'title': '❌ AUTHENTICATION FAILURE',
+                            'possible_causes': [
+                                'Wrong username or password',
+                                'Security token is incorrect or missing',
+                                'Password format is wrong (should be: password + security_token concatenated)',
+                                'Security token expired (reset it if you changed your password)',
+                                'User account is locked or inactive'
+                            ],
+                            'checks': [
+                                f'✓ Username: {self.username}',
+                                f'✓ Password length: {len(self.password) if self.password else 0} characters',
+                                f'✓ Security token: {"SET" if self.security_token else "❌ NOT SET"}',
+                                f'✓ Combined password length: {len(self.password + (self.security_token or "")) if self.password else 0} characters'
+                            ],
+                            'solution': 'Verify username, password, and security token. Reset security token if needed.'
+                        },
+                        'invalid_client_id': {
+                            'title': '❌ INVALID CLIENT ID',
+                            'possible_causes': [
+                                'Client ID (Consumer Key) is incorrect',
+                                'Client ID format is wrong',
+                                'Connected App might be deleted or inactive'
+                            ],
+                            'checks': [
+                                f'✓ Client ID provided: {"YES" if self.client_id else "NO"}',
+                                f'✓ Client ID length: {len(self.client_id) if self.client_id else 0} characters',
+                                f'✓ Client ID starts with: {self.client_id[:20] + "..." if self.client_id and len(self.client_id) > 20 else self.client_id if self.client_id else "N/A"}'
+                            ],
+                            'solution': 'Verify Client ID matches the Consumer Key from Connected App settings in Salesforce.'
+                        },
+                        'invalid_client': {
+                            'title': '❌ INVALID CLIENT SECRET',
+                            'possible_causes': [
+                                'Client Secret (Consumer Secret) is incorrect',
+                                'Client Secret was regenerated and not updated in Heroku',
+                                'Client Secret format is wrong'
+                            ],
+                            'checks': [
+                                f'✓ Client Secret provided: {"YES" if self.client_secret else "NO"}',
+                                f'✓ Client Secret length: {len(self.client_secret) if self.client_secret else 0} characters (should be 64 hex chars)'
+                            ],
+                            'solution': 'Verify Client Secret matches the Consumer Secret from Connected App. If regenerated, update Heroku config.'
+                        },
+                        'unsupported_grant_type': {
+                            'title': '❌ UNSUPPORTED GRANT TYPE',
+                            'possible_causes': [
+                                'Password grant type not enabled in Connected App',
+                                'Connected App only supports other OAuth flows'
+                            ],
+                            'checks': [
+                                '✓ Grant type used: password',
+                                '✓ Check Connected App OAuth settings in Salesforce'
+                            ],
+                            'solution': 'Enable OAuth Settings in Connected App and ensure password flow is allowed.'
+                        }
+                    }
+                    
+                    # Show specific error explanation
+                    if error_code in error_explanations:
+                        explanation = error_explanations[error_code]
+                        print(f"{explanation['title']}", flush=True)
+                        print(f"\n🔍 POSSIBLE CAUSES:", flush=True)
+                        for cause in explanation['possible_causes']:
+                            print(f"   • {cause}", flush=True)
+                        print(f"\n✅ CURRENT VALUES:", flush=True)
+                        for check in explanation['checks']:
+                            print(f"   {check}", flush=True)
+                        print(f"\n💡 SOLUTION:", flush=True)
+                        print(f"   {explanation['solution']}", flush=True)
+                    else:
+                        print(f"⚠️  UNKNOWN ERROR CODE: {error_code}", flush=True)
+                        print(f"   This is an uncommon error. Check Salesforce documentation.", flush=True)
+                    
+                    print(f"\n{'='*80}", flush=True)
+                    print(f"📤 REQUEST DETAILS:", flush=True)
+                    print(f"{'='*80}", flush=True)
+                    print(f"   Auth URL: {auth_url}", flush=True)
+                    print(f"   Request Method: {response.request.method}", flush=True)
+                    print(f"   Request URL: {response.request.url}", flush=True)
+                    print(f"   Grant Type: password", flush=True)
+                    print(f"   Client ID: {self.client_id[:30]}..." if self.client_id and len(self.client_id) > 30 else f"   Client ID: {self.client_id}", flush=True)
+                    print(f"   Client Secret: {'SET (' + str(len(self.client_secret)) + ' chars)' if self.client_secret else 'NOT SET'}", flush=True)
+                    print(f"   Username: {self.username}", flush=True)
+                    print(f"   Password: {'SET (' + str(len(self.password)) + ' chars)' if self.password else 'NOT SET'}", flush=True)
+                    print(f"   Security Token: {'SET (' + str(len(self.security_token)) + ' chars)' if self.security_token else '❌ NOT SET'}", flush=True)
+                    if self.password and self.security_token:
+                        combined_length = len(self.password + self.security_token)
+                        print(f"   Combined Password (password+token): {combined_length} chars", flush=True)
+                    
+                    print(f"\n{'='*80}", flush=True)
+                    print(f"📥 RESPONSE DETAILS:", flush=True)
+                    print(f"{'='*80}", flush=True)
+                    print(f"   Status Code: {response.status_code}", flush=True)
+                    print(f"   Content-Type: {response.headers.get('Content-Type', 'Unknown')}", flush=True)
+                    print(f"   Full Response Text:", flush=True)
+                    print(f"   {response.text}", flush=True)
+                    
+                    # Try to parse as JSON for pretty print
+                    try:
+                        error_json = response.json()
+                        print(f"\n   Parsed JSON:", flush=True)
+                        import json as json_module
+                        print(f"   {json_module.dumps(error_json, indent=2)}", flush=True)
+                    except:
+                        pass
+                    
+                    print(f"\n{'='*80}", flush=True)
+                    print(f"🔧 RECOMMENDED ACTIONS:", flush=True)
+                    print(f"{'='*80}", flush=True)
+                    
+                    if error_code == 'invalid_grant':
+                        print(f"   1. Verify username is correct: {self.username}", flush=True)
+                        print(f"   2. Verify password is correct (length: {len(self.password) if self.password else 0})", flush=True)
+                        if not self.security_token:
+                            print(f"   3. ❌ CRITICAL: Security token is NOT SET! Get it from Salesforce:", flush=True)
+                            print(f"      - Setup → My Personal Information → Reset My Security Token", flush=True)
+                            print(f"      - Then: heroku config:set SALESFORCE_SECURITY_TOKEN=\"your_token\"", flush=True)
+                        else:
+                            print(f"   3. Verify security token is correct (current length: {len(self.security_token)})", flush=True)
+                            print(f"      - If you changed your password, the token expired. Reset it.", flush=True)
+                        print(f"   4. Password format should be: password + security_token (no space, concatenated)", flush=True)
+                    elif error_code == 'invalid_client_id':
+                        print(f"   1. Go to Salesforce Setup → App Manager → Your Connected App", flush=True)
+                        print(f"   2. Verify Consumer Key matches: {self.client_id[:30]}..." if self.client_id and len(self.client_id) > 30 else f"   2. Verify Consumer Key matches: {self.client_id}", flush=True)
+                        print(f"   3. Update Heroku config if Consumer Key changed", flush=True)
+                    elif error_code == 'invalid_client':
+                        print(f"   1. Go to Salesforce Setup → App Manager → Your Connected App", flush=True)
+                        print(f"   2. Click 'Manage' → 'View' to see Consumer Secret", flush=True)
+                        print(f"   3. If regenerated, update Heroku: heroku config:set SALESFORCE_CLIENT_SECRET=\"new_secret\"", flush=True)
+                    
+                    print(f"\n{'='*80}", flush=True)
                     print(f"ERROR: OAuth2 authentication failed with 400 error", flush=True)
+                    print(f"{'='*80}\n", flush=True)
                     return False
                 
                 response.raise_for_status()
