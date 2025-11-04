@@ -146,7 +146,11 @@ async def generate_qr_code(request: QRCodeRequest):
         # Add company logo if provided
         if request.company_logo_url:
             print(f"Adding company logo...", flush=True)
-            img = await add_company_logo(img, request.company_logo_url)
+            try:
+                img = await add_company_logo(img, request.company_logo_url)
+            except Exception as logo_error:
+                print(f"Logo processing failed but continuing with QR code: {str(logo_error)}", flush=True)
+                # Continue with QR code without logo - already logged in add_company_logo
         
         # Convert to bytes
         img_byte_arr = io.BytesIO()
@@ -217,7 +221,8 @@ async def add_company_logo(qr_img, logo_url):
             print(f"Error type: {type(img_error).__name__}", flush=True)
             import traceback
             print(f"Traceback: {traceback.format_exc()}", flush=True)
-            raise
+            # Don't raise - let the outer exception handler catch it and return original QR
+            raise Exception(f"PIL could not open image: {str(img_error)}")
         
         # Convert to RGBA if needed
         if logo.mode != 'RGBA':
