@@ -22,32 +22,48 @@ class SalesforceAPI:
     async def authenticate(self) -> bool:
         """Authenticate with Salesforce using Session ID or OAuth2"""
         try:
-            print(f"=== SALESFORCE AUTHENTICATION DEBUG ===")
-            print(f"Base URL: {self.base_url}")
-            print(f"Session ID: {'SET' if self.session_id else 'NOT SET'}")
-            print(f"Client ID: {'SET' if self.client_id else 'NOT SET'}")
-            print(f"Client Secret: {'SET' if self.client_secret else 'NOT SET'}")
-            print(f"Username: {'SET' if self.username else 'NOT SET'}")
-            print(f"Password: {'SET' if self.password else 'NOT SET'}")
-            print(f"Security Token: {'SET' if self.security_token else 'NOT SET'}")
+            print(f"=== SALESFORCE AUTHENTICATION DEBUG ===", flush=True)
+            print(f"Base URL: {self.base_url}", flush=True)
+            print(f"Session ID: {'SET' if self.session_id else 'NOT SET'}", flush=True)
+            if self.session_id:
+                print(f"Session ID length: {len(self.session_id)}", flush=True)
+            print(f"Client ID: {'SET' if self.client_id else 'NOT SET'}", flush=True)
+            if self.client_id:
+                print(f"Client ID value: {self.client_id[:20]}...", flush=True)
+            print(f"Client Secret: {'SET' if self.client_secret else 'NOT SET'}", flush=True)
+            if self.client_secret:
+                print(f"Client Secret length: {len(self.client_secret)}", flush=True)
+            print(f"Username: {'SET' if self.username else 'NOT SET'}", flush=True)
+            if self.username:
+                print(f"Username value: {self.username}", flush=True)
+            print(f"Password: {'SET' if self.password else 'NOT SET'}", flush=True)
+            if self.password:
+                print(f"Password length: {len(self.password)}", flush=True)
+            print(f"Security Token: {'SET' if self.security_token else 'NOT SET'}", flush=True)
+            if self.security_token:
+                print(f"Security Token length: {len(self.security_token)}", flush=True)
             
             # Try Session ID first (preferred for API-only users)
             if self.session_id:
-                print(f"Using Session ID authentication")
+                print(f"Using Session ID authentication", flush=True)
                 self.access_token = self.session_id
-                print(f"Session ID authentication successful!")
+                print(f"Session ID authentication successful!", flush=True)
+                print(f"Access token set. Length: {len(self.access_token) if self.access_token else 0}", flush=True)
                 return True
             
             # Fallback to OAuth2 if no Session ID
             if self.client_id and self.client_secret and self.username and self.password:
-                print(f"Using OAuth2 authentication")
+                print(f"Using OAuth2 authentication", flush=True)
                 auth_url = f"{self.base_url}/services/oauth2/token"
-                print(f"Auth URL: {auth_url}")
+                print(f"Auth URL: {auth_url}", flush=True)
                 
                 # Build password - include security token if provided
                 password = self.password
                 if self.security_token:
                     password = f"{self.password}{self.security_token}"
+                    print(f"Password includes security token. Combined length: {len(password)}", flush=True)
+                else:
+                    print(f"Password does not include security token. Length: {len(password)}", flush=True)
                 
                 data = {
                     'grant_type': 'password',
@@ -58,7 +74,8 @@ class SalesforceAPI:
                 }
                 
                 # Don't log the actual password, but log the data structure
-                print(f"Auth data (password hidden): grant_type={data['grant_type']}, client_id={data['client_id']}, username={data['username']}")
+                print(f"Auth data (password hidden): grant_type={data['grant_type']}, client_id={data['client_id']}, username={data['username']}", flush=True)
+                print(f"Making OAuth2 request...", flush=True)
                 
                 response = requests.post(auth_url, data=data)
                 print(f"Response status: {response.status_code}", flush=True)
@@ -72,6 +89,8 @@ class SalesforceAPI:
                     print(f"Request headers: {dict(response.request.headers)}", flush=True)
                     print(f"Full response: {response.text}", flush=True)
                     print(f"Request data (password hidden): grant_type=password, client_id={self.client_id}, username={self.username}", flush=True)
+                    print(f"Request URL: {response.request.url}", flush=True)
+                    print(f"Request method: {response.request.method}", flush=True)
                     # Don't raise exception here, return error details instead
                     print(f"ERROR: OAuth2 authentication failed with 400 error", flush=True)
                     return False
@@ -82,13 +101,21 @@ class SalesforceAPI:
                 self.access_token = auth_data['access_token']
                 self.base_url = auth_data['instance_url']
                 
-                print(f"OAuth2 authentication successful!")
-                print(f"Access token: {'SET' if self.access_token else 'NOT SET'}")
-                print(f"Instance URL: {self.base_url}")
+                print(f"OAuth2 authentication successful!", flush=True)
+                print(f"Access token: {'SET' if self.access_token else 'NOT SET'}", flush=True)
+                if self.access_token:
+                    print(f"Access token length: {len(self.access_token)}", flush=True)
+                print(f"Instance URL: {self.base_url}", flush=True)
                 
                 return True
             
-            print(f"No valid authentication method available")
+            print(f"No valid authentication method available", flush=True)
+            print(f"Available methods check:", flush=True)
+            print(f"  - Session ID: {'YES' if self.session_id else 'NO'}", flush=True)
+            print(f"  - OAuth2 (client_id): {'YES' if self.client_id else 'NO'}", flush=True)
+            print(f"  - OAuth2 (client_secret): {'YES' if self.client_secret else 'NO'}", flush=True)
+            print(f"  - OAuth2 (username): {'YES' if self.username else 'NO'}", flush=True)
+            print(f"  - OAuth2 (password): {'YES' if self.password else 'NO'}", flush=True)
             return False
             
         except Exception as e:
