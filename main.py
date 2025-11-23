@@ -338,7 +338,7 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
     <body>
         <div class="container">
             <h1>File Upload</h1>
-            {f'<img src="{company_logo_url}" alt="Company Logo" class="logo" onerror="this.style.display=\'none\'">' if company_logo_url else ''}
+            {f'<img src="{company_logo_url}" alt="Company Logo" class="logo" onerror="this.style.display=&quot;none&quot;">' if company_logo_url else ''}
             
             <form id="uploadForm" enctype="multipart/form-data">
                 <div class="form-group">
@@ -493,4 +493,4 @@ async def generate_qr_code_simple(data: str, size: int = 10, border: int = 4):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

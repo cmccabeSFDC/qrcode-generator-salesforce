@@ -9,4 +9,4 @@ SECRET_KEY = os.getenv("SECRET_KEY", "qr-code-generator-secret-key")
 
 # API Configuration
 API_HOST = "0.0.0.0"
-API_PORT = 8001
+API_PORT = 8000
