@@ -75,8 +75,16 @@ class SalesforceAPI:
                 
                 # Don't log the actual password, but log the data structure
                 print(f"Auth data (password hidden): grant_type={data['grant_type']}, client_id={data['client_id']}, username={data['username']}", flush=True)
+                print(f"Password format check:", flush=True)
+                print(f"  - Password length: {len(self.password)}", flush=True)
+                print(f"  - Security token length: {len(self.security_token) if self.security_token else 0}", flush=True)
+                print(f"  - Combined password length: {len(password)}", flush=True)
+                print(f"  - Password first 4 chars: {self.password[:4] if len(self.password) >= 4 else self.password}", flush=True)
+                print(f"  - Security token first 4 chars: {self.security_token[:4] if self.security_token and len(self.security_token) >= 4 else 'N/A'}", flush=True)
+                print(f"  - Combined format: password({len(self.password)}) + token({len(self.security_token) if self.security_token else 0}) = {len(password)} chars", flush=True)
                 print(f"Making OAuth2 request...", flush=True)
                 
+                # Use data parameter (not json) - requests will URL-encode automatically
                 response = requests.post(auth_url, data=data)
                 print(f"Response status: {response.status_code}", flush=True)
                 print(f"Response headers: {dict(response.headers)}", flush=True)
