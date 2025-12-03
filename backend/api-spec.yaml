@@ -1,0 +1,215 @@
+openapi: 3.0.0
+info:
+  title: QR Code Generator API
+  description: API for generating QR codes with optional company logos and uploading files to Salesforce
+  version: 1.0.0
+servers:
+  - url: https://democomponent-qrcode-generator-c48b26ff05fc.herokuapp.com
+    description: Heroku production server
+paths:
+  /generate:
+    post:
+      summary: Generate QR Code
+      description: Generates a QR code image (PNG) from the provided data with optional company logo overlay
+      operationId: generateQRCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QRCodeRequest'
+            example:
+              data: "https://example.com/form/00QJ9000003uCB4MAM"
+              size: 10
+              border: 4
+              fill_color: "black"
+              back_color: "white"
+              company_logo_url: "https://example.com/logo.png"
+              file_name: "my_qr_code"
+              record_id: "00QJ9000003uCB4MAM"
+      responses:
+        '200':
+          description: Successfully generated QR code
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+              example: "PNG image binary data"
+        '400':
+          description: Bad request - invalid input parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /upload:
+    post:
+      summary: Upload File to Salesforce
+      description: Uploads a file to a Salesforce record as a ContentDocument
+      operationId: uploadFileToSalesforce
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileUploadRequest'
+            example:
+              record_id: "00QJ9000003uCB4MAM"
+              file_name: "document"
+              company_logo_url: "https://example.com/logo.png"
+      responses:
+        '200':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          description: Bad request - invalid input parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /health:
+    get:
+      summary: Health Check
+      description: Returns the health status of the API
+      operationId: healthCheck
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  schemas:
+    QRCodeRequest:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: string
+          description: The data to encode in the QR code (URL, text, etc.)
+          example: "https://example.com/form/00QJ9000003uCB4MAM"
+        size:
+          type: integer
+          description: Size of each QR code box in pixels
+          default: 10
+          minimum: 1
+          maximum: 50
+          example: 10
+        border:
+          type: integer
+          description: Border size around the QR code
+          default: 4
+          minimum: 1
+          maximum: 10
+          example: 4
+        fill_color:
+          type: string
+          description: Color of the QR code (foreground)
+          default: "black"
+          example: "black"
+        back_color:
+          type: string
+          description: Background color of the QR code
+          default: "white"
+          example: "white"
+        company_logo_url:
+          type: string
+          description: Optional URL of company logo to overlay on QR code
+          format: uri
+          nullable: true
+          example: "https://example.com/logo.png"
+        file_name:
+          type: string
+          description: Optional file name for the generated QR code
+          nullable: true
+          example: "my_qr_code"
+        record_id:
+          type: string
+          description: Optional Salesforce record ID
+          nullable: true
+          example: "00QJ9000003uCB4MAM"
+    
+    FileUploadRequest:
+      type: object
+      required:
+        - record_id
+        - file_name
+      properties:
+        record_id:
+          type: string
+          description: Salesforce record ID to attach the file to
+          example: "00QJ9000003uCB4MAM"
+        file_name:
+          type: string
+          description: Name for the uploaded file
+          example: "document"
+        company_logo_url:
+          type: string
+          description: Optional company logo URL
+          format: uri
+          nullable: true
+          example: "https://example.com/logo.png"
+    
+    UploadResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "File uploaded successfully"
+        record_id:
+          type: string
+          example: "00QJ9000003uCB4MAM"
+        file_name:
+          type: string
+          example: "document"
+        salesforce_result:
+          type: object
+          properties:
+            status:
+              type: string
+              example: "success"
+            message:
+              type: string
+              example: "File document successfully attached to record 00QJ9000003uCB4MAM"
+            content_document_id:
+              type: string
+              example: "069000000000000AAA"
+            content_version_id:
+              type: string
+              example: "068000000000000AAA"
+    
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+    
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: "Error generating QR code: Invalid input parameters"
+
