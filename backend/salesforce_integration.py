@@ -298,19 +298,42 @@ class SalesforceAPI:
             print(f"Traceback: {traceback.format_exc()}")
             return False
     
-    async def upload_file_to_record(self, record_id: str, file_path: str, file_name: str) -> Dict[str, Any]:
+    async def upload_file_to_record(
+        self, 
+        record_id: str, 
+        file_path: str, 
+        file_name: str,
+        applink_auth_token: Optional[str] = None,
+        applink_instance_url: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Upload a file to a Salesforce record as a ContentDocument"""
         try:
             print(f"=== UPLOAD FILE TO RECORD DEBUG ===")
             print(f"Record ID: {record_id}")
             print(f"File path: {file_path}")
             print(f"File name: {file_name}")
-            print(f"Access token: {'SET' if self.access_token else 'NOT SET'}")
             
-            if not self.access_token:
-                print(f"Access token not available, attempting authentication...")
+            # Use AppLink authentication if provided
+            if applink_auth_token:
+                print(f"Using AppLink authentication", flush=True)
+                # Extract token from "Bearer <token>" format if needed
+                if applink_auth_token.startswith("Bearer "):
+                    self.access_token = applink_auth_token[7:]  # Remove "Bearer " prefix
+                else:
+                    self.access_token = applink_auth_token
+                
+                # Use AppLink instance URL if provided, otherwise keep existing
+                if applink_instance_url:
+                    self.base_url = applink_instance_url.rstrip('/')
+                    print(f"Using AppLink instance URL: {self.base_url}", flush=True)
+                
+                print(f"AppLink access token set. Length: {len(self.access_token)}", flush=True)
+            elif not self.access_token:
+                print(f"Access token not available, attempting OAuth2 authentication...")
                 if not await self.authenticate():
                     return {"status": "error", "message": "Authentication failed"}
+            else:
+                print(f"Using existing access token (OAuth2/Session ID)", flush=True)
             
             # Step 1: Create ContentVersion
             print(f"=== STEP 1: Creating ContentVersion ===")
