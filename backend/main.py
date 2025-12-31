@@ -428,6 +428,11 @@ async def upload_file(
         print(f"File content type: {file.content_type}", flush=True)
         print(f"Record ID: {record_id}", flush=True)
         print(f"File name: {file_name}", flush=True)
+        print(f"Session token from form: {'SET' if session_token else 'NOT SET'}", flush=True)
+        if session_token:
+            print(f"Session token length: {len(session_token)}", flush=True)
+            print(f"Session token preview: {session_token[:30]}...", flush=True)
+        print(f"Instance URL from form: {'SET' if instance_url else 'NOT SET'}", flush=True)
         
         # Check for session token from form data (preferred) or headers (AppLink)
         auth_header = None
