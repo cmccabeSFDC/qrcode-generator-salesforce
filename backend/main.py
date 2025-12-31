@@ -264,7 +264,7 @@ async def add_company_logo(qr_img, logo_url):
         return qr_img
 
 @app.get("/form/{record_id}")
-async def show_upload_form(record_id: str, company_logo_url: str = None, file_name: str = None):
+async def show_upload_form(record_id: str, company_logo_url: str = None, file_name: str = None, session_token: str = None, instance_url: str = None):
     """Display the upload form for file submission"""
     form_html = f"""
     <!DOCTYPE html>
@@ -354,6 +354,10 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
         </div>
 
         <script>
+            // Get session token from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionToken = urlParams.get('session_token');
+            
             document.getElementById('uploadForm').addEventListener('submit', async function(e) {{
                 e.preventDefault();
                 
@@ -370,9 +374,20 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                 formData.append('record_id', '{record_id}');
                 formData.append('file_name', '{file_name or "uploaded_file"}');
                 
+                // Add Salesforce session token if provided
+                const headers = {{}};
+                const instanceUrl = urlParams.get('instance_url');
+                if (sessionToken) {{
+                    headers['Authorization'] = 'Bearer ' + sessionToken;
+                    if (instanceUrl) {{
+                        headers['X-Salesforce-Instance-Url'] = instanceUrl;
+                    }}
+                }}
+                
                 try {{
                     const response = await fetch('/upload', {{
                         method: 'POST',
+                        headers: headers,
                         body: formData
                     }});
                     
