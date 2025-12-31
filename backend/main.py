@@ -376,10 +376,26 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                 
                 // Add Salesforce session token as form field (can't use headers with FormData)
                 const instanceUrl = urlParams.get('instance_url');
+                console.log('DEBUG: sessionToken from URL:', sessionToken ? 'SET (' + sessionToken.substring(0, 20) + '...)' : 'NOT SET');
+                console.log('DEBUG: instanceUrl from URL:', instanceUrl || 'NOT SET');
                 if (sessionToken) {{
                     formData.append('session_token', sessionToken);
+                    console.log('DEBUG: Added session_token to FormData');
                     if (instanceUrl) {{
                         formData.append('instance_url', instanceUrl);
+                        console.log('DEBUG: Added instance_url to FormData');
+                    }}
+                }} else {{
+                    console.warn('DEBUG: sessionToken is null/empty, not adding to FormData');
+                }}
+                
+                // Debug: Log all FormData entries
+                console.log('DEBUG: FormData entries:');
+                for (let pair of formData.entries()) {{
+                    if (pair[0] === 'session_token') {{
+                        console.log('  ' + pair[0] + ': ' + pair[1].substring(0, 20) + '...');
+                    }} else {{
+                        console.log('  ' + pair[0] + ': ' + (typeof pair[1] === 'string' ? pair[1] : pair[1].name));
                     }}
                 }}
                 
@@ -428,10 +444,18 @@ async def upload_file(
         print(f"File content type: {file.content_type}", flush=True)
         print(f"Record ID: {record_id}", flush=True)
         print(f"File name: {file_name}", flush=True)
+        
+        # Explicit logging for session token
+        print(f"=== SESSION TOKEN CHECK ===", flush=True)
+        print(f"session_token parameter value: {session_token}", flush=True)
+        print(f"session_token type: {type(session_token)}", flush=True)
+        print(f"session_token is None: {session_token is None}", flush=True)
+        print(f"session_token is empty string: {session_token == ''}", flush=True)
         print(f"Session token from form: {'SET' if session_token else 'NOT SET'}", flush=True)
         if session_token:
             print(f"Session token length: {len(session_token)}", flush=True)
             print(f"Session token preview: {session_token[:30]}...", flush=True)
+        print(f"Instance URL from form: {instance_url}", flush=True)
         print(f"Instance URL from form: {'SET' if instance_url else 'NOT SET'}", flush=True)
         
         # Check for session token from form data (preferred) or headers (AppLink)
