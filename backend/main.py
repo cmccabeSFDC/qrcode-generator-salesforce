@@ -374,20 +374,18 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                 formData.append('record_id', '{record_id}');
                 formData.append('file_name', '{file_name or "uploaded_file"}');
                 
-                // Add Salesforce session token if provided
-                const headers = {{}};
+                // Add Salesforce session token as form field (can't use headers with FormData)
                 const instanceUrl = urlParams.get('instance_url');
                 if (sessionToken) {{
-                    headers['Authorization'] = 'Bearer ' + sessionToken;
+                    formData.append('session_token', sessionToken);
                     if (instanceUrl) {{
-                        headers['X-Salesforce-Instance-Url'] = instanceUrl;
+                        formData.append('instance_url', instanceUrl);
                     }}
                 }}
                 
                 try {{
                     const response = await fetch('/upload', {{
                         method: 'POST',
-                        headers: headers,
                         body: formData
                     }});
                     
@@ -419,7 +417,9 @@ async def upload_file(
     request: Request,
     file: UploadFile = File(...),
     record_id: str = Form(...),
-    file_name: str = Form(...)
+    file_name: str = Form(...),
+    session_token: str = Form(None),
+    instance_url: str = Form(None)
 ):
     """Handle file upload and send to Salesforce"""
     try:
@@ -429,18 +429,28 @@ async def upload_file(
         print(f"Record ID: {record_id}", flush=True)
         print(f"File name: {file_name}", flush=True)
         
-        # Check for AppLink authentication headers
-        auth_header = request.headers.get("Authorization")
-        instance_url = request.headers.get("X-Salesforce-Instance-Url") or request.headers.get("X-Salesforce-Instance")
-        org_id = request.headers.get("X-Salesforce-Org-Id")
-        
-        print(f"=== APPLINK AUTHENTICATION CHECK ===", flush=True)
-        print(f"Authorization header: {'SET' if auth_header else 'NOT SET'}", flush=True)
-        if auth_header:
-            print(f"Authorization header length: {len(auth_header)}", flush=True)
-            print(f"Authorization header preview: {auth_header[:50]}...", flush=True)
-        print(f"Instance URL header: {instance_url}", flush=True)
-        print(f"Org ID header: {org_id}", flush=True)
+        # Check for session token from form data (preferred) or headers (AppLink)
+        auth_header = None
+        if session_token:
+            # Session token from form field
+            auth_header = f"Bearer {session_token}"
+            print(f"=== SESSION TOKEN FROM FORM ===", flush=True)
+            print(f"Session token: SET (from form field)", flush=True)
+            print(f"Session token length: {len(session_token)}", flush=True)
+            if instance_url:
+                print(f"Instance URL from form: {instance_url}", flush=True)
+        else:
+            # Fallback to AppLink headers
+            auth_header = request.headers.get("Authorization")
+            instance_url = instance_url or request.headers.get("X-Salesforce-Instance-Url") or request.headers.get("X-Salesforce-Instance")
+            org_id = request.headers.get("X-Salesforce-Org-Id")
+            print(f"=== APPLINK AUTHENTICATION CHECK ===", flush=True)
+            print(f"Authorization header: {'SET' if auth_header else 'NOT SET'}", flush=True)
+            if auth_header:
+                print(f"Authorization header length: {len(auth_header)}", flush=True)
+                print(f"Authorization header preview: {auth_header[:50]}...", flush=True)
+            print(f"Instance URL header: {instance_url}", flush=True)
+            print(f"Org ID header: {org_id}", flush=True)
         
         # Generate unique filename
         file_extension = os.path.splitext(file.filename)[1]
