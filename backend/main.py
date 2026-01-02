@@ -341,6 +341,12 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
             {f'<img src="{company_logo_url}" alt="Company Logo" class="logo" onerror="this.style.display=&quot;none&quot;">' if company_logo_url else ''}
             
             <form id="uploadForm" enctype="multipart/form-data">
+                <!-- Hidden fields - will be populated by JavaScript -->
+                <input type="hidden" id="sessionTokenField" name="session_token" value="">
+                <input type="hidden" id="instanceUrlField" name="instance_url" value="">
+                <input type="hidden" name="record_id" value="{record_id}">
+                <input type="hidden" name="file_name" value="{file_name or 'uploaded_file'}">
+                
                 <div class="form-group">
                     <label for="file">Select File to Upload:</label>
                     <input type="file" id="file" name="file" required>
@@ -406,56 +412,66 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                     container.insertBefore(statusDiv, form);
                     console.log('✓ Debug box inserted into page');
                     
-                    // Define showMessage function first
+                    // Set hidden field values from URL parameters
+                    const sessionTokenField = document.getElementById('sessionTokenField');
+                    const instanceUrlField = document.getElementById('instanceUrlField');
+                    
+                    if (sessionToken && sessionTokenField) {{
+                        sessionTokenField.value = sessionToken;
+                        console.log('✓ Set session_token hidden field value');
+                    }} else {{
+                        console.warn('✗ sessionToken is null/empty OR field not found');
+                    }}
+                    
+                    if (instanceUrl && instanceUrlField) {{
+                        instanceUrlField.value = instanceUrl;
+                        console.log('✓ Set instance_url hidden field value');
+                    }}
+                    
+                    // Update debug box to show hidden field values
+                    const submitStatusEl = document.getElementById('formSubmitStatus');
+                    if (submitStatusEl) {{
+                        submitStatusEl.innerHTML = 'Hidden fields set:<br>' +
+                            'session_token: ' + (sessionTokenField && sessionTokenField.value ? '✓ SET (' + sessionTokenField.value.length + ' chars)' : '✗ NOT SET') + '<br>' +
+                            'instance_url: ' + (instanceUrlField && instanceUrlField.value ? '✓ SET (' + instanceUrlField.value + ')' : '✗ NOT SET');
+                    }}
+                    
+                    // Define showMessage function
                     function showMessage(text, type) {{
                         const messageDiv = document.getElementById('message');
                         messageDiv.innerHTML = '<div class="' + type + '">' + text + '</div>';
                     }}
                     
-                    // Set up form submission handler (inside DOMContentLoaded so variables are accessible)
+                    // Set up form submission handler - use standard form submission with hidden fields
                     form.addEventListener('submit', async function(e) {{
                         e.preventDefault();
                         
                         // Update visible debug status
                         const submitStatusEl = document.getElementById('formSubmitStatus');
-                        submitStatusEl.innerHTML = 'Form submitted! Checking values...';
+                        if (submitStatusEl) {{
+                            submitStatusEl.innerHTML = 'Form submitted! Sending with hidden fields...';
+                        }}
                         
-                        const formData = new FormData();
                         const fileInput = document.getElementById('file');
                         const file = fileInput.files[0];
                         
                         if (!file) {{
                             showMessage('Please select a file to upload.', 'error');
-                            submitStatusEl.innerHTML = '✗ ERROR: No file selected';
+                            if (submitStatusEl) {{
+                                submitStatusEl.innerHTML = '✗ ERROR: No file selected';
+                            }}
                             return;
                         }}
                         
-                        formData.append('file', file);
-                        formData.append('record_id', '{record_id}');
-                        formData.append('file_name', '{file_name or "uploaded_file"}');
+                        // Create FormData from the form (this will include hidden fields automatically)
+                        const formData = new FormData(form);
                         
-                        // Add Salesforce session token as form field (can't use headers with FormData)
                         console.log('=== FORM SUBMISSION DEBUG ===');
-                        console.log('DEBUG: sessionToken from URL:', sessionToken ? 'SET (' + sessionToken.substring(0, 20) + '...)' : 'NOT SET');
-                        console.log('DEBUG: instanceUrl from URL:', instanceUrl || 'NOT SET');
-                        
-                        let formDataEntries = [];
-                        if (sessionToken) {{
-                            formData.append('session_token', sessionToken);
-                            formDataEntries.push('session_token: ' + sessionToken.substring(0, 30) + '...');
-                            console.log('✓ Added session_token to FormData');
-                            if (instanceUrl) {{
-                                formData.append('instance_url', instanceUrl);
-                                formDataEntries.push('instance_url: ' + instanceUrl);
-                                console.log('✓ Added instance_url to FormData');
-                            }}
-                        }} else {{
-                            console.warn('✗ sessionToken is null/empty, NOT adding to FormData');
-                            formDataEntries.push('session_token: ✗ NOT ADDED (was null/empty)');
-                        }}
+                        console.log('session_token hidden field value:', sessionTokenField ? sessionTokenField.value : 'FIELD NOT FOUND');
+                        console.log('instance_url hidden field value:', instanceUrlField ? instanceUrlField.value : 'FIELD NOT FOUND');
                         
                         // Debug: Log all FormData entries
-                        console.log('DEBUG: FormData entries:');
+                        console.log('DEBUG: FormData entries (from form):');
                         let allEntries = [];
                         for (let pair of formData.entries()) {{
                             if (pair[0] === 'session_token') {{
@@ -474,7 +490,9 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                         }}
                         
                         // Update visible debug
-                        submitStatusEl.innerHTML = '<strong>FormData Contents:</strong><br>' + allEntries.join('<br>');
+                        if (submitStatusEl) {{
+                            submitStatusEl.innerHTML = '<strong>FormData Contents:</strong><br>' + allEntries.join('<br>');
+                        }}
                         
                         try {{
                             const response = await fetch('/upload', {{
