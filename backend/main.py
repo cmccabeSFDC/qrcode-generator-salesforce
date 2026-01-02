@@ -12,6 +12,7 @@ import base64
 import os
 import sys
 import uuid
+import html
 from datetime import datetime
 from salesforce_integration import salesforce_api
 
@@ -266,6 +267,19 @@ async def add_company_logo(qr_img, logo_url):
 @app.get("/form/{record_id}")
 async def show_upload_form(record_id: str, company_logo_url: str = None, file_name: str = None, session_token: str = None, instance_url: str = None):
     """Display the upload form for file submission"""
+    # CRITICAL DEBUG: Log what we received
+    print(f"=== FORM PAGE REQUEST DEBUG ===", flush=True)
+    print(f"record_id: {record_id}", flush=True)
+    print(f"session_token: {session_token[:50] + '...' if session_token and len(session_token) > 50 else (session_token if session_token else 'NOT PROVIDED')}", flush=True)
+    print(f"session_token length: {len(session_token) if session_token else 0}", flush=True)
+    print(f"instance_url: {instance_url if instance_url else 'NOT PROVIDED'}", flush=True)
+    print(f"file_name: {file_name}", flush=True)
+    print(f"company_logo_url: {company_logo_url}", flush=True)
+    
+    # Ensure we have values (even if empty strings)
+    session_token = session_token or ''
+    instance_url = instance_url or ''
+    
     form_html = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -368,12 +382,22 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
             
             {f'<img src="{company_logo_url}" alt="Company Logo" class="logo" onerror="this.style.display=&quot;none&quot;">' if company_logo_url else ''}
             
+            <!-- VERIFICATION: Show hidden field values (for debugging) -->
+            <div style="background: #d4edda; padding: 15px; margin: 10px 0; border: 2px solid #28a745; border-radius: 5px; font-family: monospace; font-size: 11px;">
+                <strong>✅ Hidden Fields (Server-Side Set):</strong><br>
+                session_token: {session_token[:50] + '...' if session_token and len(session_token) > 50 else (session_token if session_token else 'NOT SET')}<br>
+                instance_url: {instance_url if instance_url else 'NOT SET'}<br>
+                record_id: {record_id}<br>
+                file_name: {file_name or 'uploaded_file'}<br>
+                <small>These values are embedded in the form below (view page source to verify)</small>
+            </div>
+            
             <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
                 <!-- Hidden fields - Set server-side so they work even without JavaScript -->
-                <input type="hidden" id="sessionTokenField" name="session_token" value="{session_token or ''}">
-                <input type="hidden" id="instanceUrlField" name="instance_url" value="{instance_url or ''}">
-                <input type="hidden" name="record_id" value="{record_id}">
-                <input type="hidden" name="file_name" value="{file_name or 'uploaded_file'}">
+                <input type="hidden" id="sessionTokenField" name="session_token" value="{html.escape(session_token) if session_token else ''}">
+                <input type="hidden" id="instanceUrlField" name="instance_url" value="{html.escape(instance_url) if instance_url else ''}">
+                <input type="hidden" name="record_id" value="{html.escape(record_id)}">
+                <input type="hidden" name="file_name" value="{html.escape(file_name) if file_name else 'uploaded_file'}">
                 
                 <div class="form-group">
                     <label for="file">Select File to Upload:</label>
