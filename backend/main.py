@@ -354,6 +354,11 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
         </div>
 
         <script>
+            // CRITICAL DEBUG: Log everything immediately
+            console.log('=== SCRIPT LOADED ===');
+            console.log('Full URL:', window.location.href);
+            console.log('URL Search:', window.location.search);
+            
             // Get session token from URL parameters
             const urlParams = new URLSearchParams(window.location.search);
             const sessionToken = urlParams.get('session_token');
@@ -365,17 +370,32 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
             console.log('session_token from URL:', sessionToken ? 'SET (' + sessionToken.substring(0, 20) + '...)' : 'NOT SET');
             console.log('instance_url from URL:', instanceUrl || 'NOT SET');
             
-            // Display status on page
+            // Display comprehensive status on page (ALWAYS VISIBLE)
             const statusDiv = document.createElement('div');
             statusDiv.id = 'debugStatus';
-            statusDiv.style.cssText = 'font-size: 12px; color: #666; margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 5px;';
-            statusDiv.innerHTML = '<strong>Debug Info:</strong><br>' +
-                'Session Token: ' + (sessionToken ? '✓ Found (' + sessionToken.substring(0, 20) + '...)' : '✗ NOT FOUND') + '<br>' +
-                'Instance URL: ' + (instanceUrl || '✗ NOT FOUND');
+            statusDiv.style.cssText = 'font-size: 11px; color: #333; margin: 10px 0; padding: 15px; background: #f0f0f0; border: 2px solid #0070d2; border-radius: 5px; text-align: left; font-family: monospace;';
+            
+            let debugHtml = '<strong style="color: #0070d2;">🔍 DEBUG INFORMATION</strong><br><br>';
+            debugHtml += '<strong>Step 1: URL Parameters</strong><br>';
+            debugHtml += 'Full URL: ' + window.location.href.substring(0, 100) + '...<br>';
+            debugHtml += 'URL Search: ' + window.location.search + '<br><br>';
+            
+            debugHtml += '<strong>Step 2: Extracted Values</strong><br>';
+            debugHtml += 'session_token: ' + (sessionToken ? '✓ FOUND (' + sessionToken.length + ' chars, starts with: ' + sessionToken.substring(0, 20) + '...)' : '✗ NOT FOUND') + '<br>';
+            debugHtml += 'instance_url: ' + (instanceUrl ? '✓ FOUND (' + instanceUrl + ')' : '✗ NOT FOUND') + '<br><br>';
+            
+            debugHtml += '<strong>Step 3: Form Submission</strong><br>';
+            debugHtml += '<span id="formSubmitStatus">Waiting for form submission...</span><br>';
+            
+            statusDiv.innerHTML = debugHtml;
             document.querySelector('.container').insertBefore(statusDiv, document.getElementById('uploadForm'));
             
             document.getElementById('uploadForm').addEventListener('submit', async function(e) {{
                 e.preventDefault();
+                
+                // Update visible debug status
+                const submitStatusEl = document.getElementById('formSubmitStatus');
+                submitStatusEl.innerHTML = 'Form submitted! Checking values...';
                 
                 const formData = new FormData();
                 const fileInput = document.getElementById('file');
@@ -383,6 +403,7 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                 
                 if (!file) {{
                     showMessage('Please select a file to upload.', 'error');
+                    submitStatusEl.innerHTML = '✗ ERROR: No file selected';
                     return;
                 }}
                 
@@ -391,28 +412,46 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                 formData.append('file_name', '{file_name or "uploaded_file"}');
                 
                 // Add Salesforce session token as form field (can't use headers with FormData)
+                console.log('=== FORM SUBMISSION DEBUG ===');
                 console.log('DEBUG: sessionToken from URL:', sessionToken ? 'SET (' + sessionToken.substring(0, 20) + '...)' : 'NOT SET');
                 console.log('DEBUG: instanceUrl from URL:', instanceUrl || 'NOT SET');
+                
+                let formDataEntries = [];
                 if (sessionToken) {{
                     formData.append('session_token', sessionToken);
-                    console.log('DEBUG: Added session_token to FormData');
+                    formDataEntries.push('session_token: ' + sessionToken.substring(0, 30) + '...');
+                    console.log('✓ Added session_token to FormData');
                     if (instanceUrl) {{
                         formData.append('instance_url', instanceUrl);
-                        console.log('DEBUG: Added instance_url to FormData');
+                        formDataEntries.push('instance_url: ' + instanceUrl);
+                        console.log('✓ Added instance_url to FormData');
                     }}
                 }} else {{
-                    console.warn('DEBUG: sessionToken is null/empty, not adding to FormData');
+                    console.warn('✗ sessionToken is null/empty, NOT adding to FormData');
+                    formDataEntries.push('session_token: ✗ NOT ADDED (was null/empty)');
                 }}
                 
                 // Debug: Log all FormData entries
                 console.log('DEBUG: FormData entries:');
+                let allEntries = [];
                 for (let pair of formData.entries()) {{
                     if (pair[0] === 'session_token') {{
-                        console.log('  ' + pair[0] + ': ' + pair[1].substring(0, 20) + '...');
+                        const entry = pair[0] + ': ' + pair[1].substring(0, 30) + '... (' + pair[1].length + ' chars)';
+                        console.log('  ' + entry);
+                        allEntries.push(entry);
+                    }} else if (pair[0] === 'instance_url') {{
+                        const entry = pair[0] + ': ' + pair[1];
+                        console.log('  ' + entry);
+                        allEntries.push(entry);
                     }} else {{
-                        console.log('  ' + pair[0] + ': ' + (typeof pair[1] === 'string' ? pair[1] : pair[1].name));
+                        const entry = pair[0] + ': ' + (typeof pair[1] === 'string' ? pair[1] : pair[1].name);
+                        console.log('  ' + entry);
+                        allEntries.push(entry);
                     }}
                 }}
+                
+                // Update visible debug
+                submitStatusEl.innerHTML = '<strong>FormData Contents:</strong><br>' + allEntries.join('<br>');
                 
                 try {{
                     const response = await fetch('/upload', {{
@@ -465,13 +504,23 @@ async def upload_file(
         print(f"session_token from Form(): '{session_token}'", flush=True)
         print(f"session_token type: {type(session_token)}", flush=True)
         print(f"session_token length: {len(session_token) if session_token else 0}", flush=True)
+        print(f"session_token is empty string: {session_token == ''}", flush=True)
+        print(f"session_token is None: {session_token is None}", flush=True)
         print(f"instance_url from Form(): '{instance_url}'", flush=True)
+        print(f"instance_url type: {type(instance_url)}", flush=True)
+        print(f"instance_url length: {len(instance_url) if instance_url else 0}", flush=True)
         
         # Normalize: treat empty strings as None
+        session_token_original = session_token
+        instance_url_original = instance_url
         if session_token == "":
             session_token = None
         if instance_url == "":
             instance_url = None
+        
+        print(f"=== AFTER NORMALIZATION ===", flush=True)
+        print(f"session_token: {session_token} (was: '{session_token_original}')", flush=True)
+        print(f"instance_url: {instance_url} (was: '{instance_url_original}')", flush=True)
         
         # Also check AppLink headers (in case request came from Salesforce)
         print(f"=== CHECKING APPLINK HEADERS ===", flush=True)
@@ -505,6 +554,22 @@ async def upload_file(
         # Priority 3: OAuth2 fallback (will be handled in salesforce_integration.py)
         else:
             print(f"✗ No AppLink headers or session token - will use OAuth2 fallback", flush=True)
+        
+        # FINAL SUMMARY - All variables and their status
+        print(f"", flush=True)
+        print(f"=== FINAL VARIABLE STATUS SUMMARY ===", flush=True)
+        print(f"1. Form Parameters (from FastAPI):", flush=True)
+        print(f"   - session_token: {'✓ SET (' + str(len(session_token_original)) + ' chars)' if session_token_original else '✗ EMPTY/NONE'}", flush=True)
+        print(f"   - instance_url: {'✓ SET (' + instance_url_original + ')' if instance_url_original else '✗ EMPTY/NONE'}", flush=True)
+        print(f"2. AppLink Headers (from request):", flush=True)
+        print(f"   - Authorization: {'✓ SET (' + str(len(applink_auth)) + ' chars)' if applink_auth else '✗ NOT SET'}", flush=True)
+        print(f"   - Instance URL: {'✓ SET (' + applink_instance + ')' if applink_instance else '✗ NOT SET'}", flush=True)
+        print(f"3. Selected Authentication:", flush=True)
+        print(f"   - Method: {'AppLink' if applink_auth else ('Session Token' if session_token else 'OAuth2 Fallback')}", flush=True)
+        print(f"   - auth_header: {'✓ SET (' + str(len(auth_header)) + ' chars)' if auth_header else '✗ NOT SET'}", flush=True)
+        print(f"   - instance_url (final): {'✓ SET (' + instance_url + ')' if instance_url else '✗ NOT SET'}", flush=True)
+        print(f"=== END SUMMARY ===", flush=True)
+        print(f"", flush=True)
         
         # Generate unique filename
         file_extension = os.path.splitext(file.filename)[1]
