@@ -213,3 +213,6 @@ components:
           description: Error message
           example: "Error generating QR code: Invalid input parameters"
 
+
+
+

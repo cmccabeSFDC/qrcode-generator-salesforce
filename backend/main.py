@@ -336,8 +336,26 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
         </style>
     </head>
     <body>
+        <!-- Check if JavaScript is enabled -->
+        <noscript>
+            <div style="background: #f8d7da; padding: 20px; margin: 20px; border: 2px solid #dc3545; border-radius: 5px;">
+                <strong>⚠️ JavaScript is Disabled</strong><br>
+                This form requires JavaScript to function. Please enable JavaScript in your browser settings.
+            </div>
+        </noscript>
+        
         <div class="container">
             <h1>File Upload</h1>
+            
+            <!-- Server-side debug info (always visible, no JavaScript needed) -->
+            <div style="background: #e7f3ff; padding: 15px; margin: 10px 0; border: 2px solid #0070d2; border-radius: 5px; text-align: left; font-family: monospace; font-size: 11px;">
+                <strong>📋 Server-Side Debug (from URL parameters):</strong><br>
+                Session Token: {session_token[:30] + '...' if session_token and len(session_token) > 30 else (session_token if session_token else 'NOT PROVIDED')}<br>
+                Session Token Length: {len(session_token) if session_token else 0} chars<br>
+                Instance URL: {instance_url if instance_url else 'NOT PROVIDED'}<br>
+                <small>This shows what the server received from the URL. JavaScript will read the same values.</small>
+            </div>
+            
             {f'<img src="{company_logo_url}" alt="Company Logo" class="logo" onerror="this.style.display=&quot;none&quot;">' if company_logo_url else ''}
             
             <form id="uploadForm" enctype="multipart/form-data">
@@ -359,31 +377,111 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
             <div id="message"></div>
         </div>
 
+        <!-- IMMEDIATE SCRIPT - Runs before DOMContentLoaded -->
         <script>
-            // Wait for DOM to be ready
-            document.addEventListener('DOMContentLoaded', function() {{
+            // This runs IMMEDIATELY when script tag is parsed
+            (function() {{
+                console.log('========================================');
+                console.log('=== SCRIPT TAG 1: IMMEDIATE SCRIPT ===');
+                console.log('=== JAVASCRIPT IS RUNNING: ✓ YES ===');
+                console.log('=== Script tag loaded: ✓ YES ===');
+                
+                // Check if script tags are in DOM
+                const allScripts = document.getElementsByTagName('script');
+                console.log('=== SCRIPT TAGS CHECK ===');
+                console.log('Total script tags found in DOM:', allScripts.length);
+                console.log('Current script tag index:', Array.from(allScripts).indexOf(document.currentScript));
+                console.log('Script tags are loading: ✓ YES');
+                console.log('========================================');
+                console.log('Current URL:', window.location.href);
+                console.log('URL Search (query string):', window.location.search);
+                
+                // Try to read session token immediately
                 try {{
-                    // CRITICAL DEBUG: Log everything immediately
-                    console.log('=== SCRIPT LOADED ===');
-                    console.log('Full URL:', window.location.href);
-                    console.log('URL Search:', window.location.search);
-                    
-                    // Get session token from URL parameters
+                    console.log('--- Reading URL Parameters ---');
                     const urlParams = new URLSearchParams(window.location.search);
                     const sessionToken = urlParams.get('session_token');
                     const instanceUrl = urlParams.get('instance_url');
                     
-                    // Show debug info on page load
-                    console.log('=== FORM PAGE LOAD DEBUG ===');
-                    console.log('URL params:', window.location.search);
-                    console.log('=== SESSION TOKEN FROM URL ===');
-                    console.log('session_token (full):', sessionToken || 'NOT SET');
-                    console.log('session_token length:', sessionToken ? sessionToken.length : 0);
-                    console.log('session_token preview:', sessionToken ? sessionToken.substring(0, 30) + '...' : 'NOT SET');
-                    console.log('session_token starts with:', sessionToken ? sessionToken.substring(0, 20) : 'NOT SET');
-                    console.log('=== INSTANCE URL FROM URL ===');
-                    console.log('instance_url:', instanceUrl || 'NOT SET');
-                    console.log('=== END FORM PAGE LOAD DEBUG ===');
+                    console.log('========================================');
+                    console.log('=== SESSION TOKEN READ FROM URL ===');
+                    if (sessionToken) {{
+                        console.log('✓ SESSION TOKEN FOUND!');
+                        console.log('Session Token (FULL):', sessionToken);
+                        console.log('Session Token Length:', sessionToken.length, 'characters');
+                        console.log('Session Token Preview (first 30 chars):', sessionToken.substring(0, 30) + '...');
+                        console.log('Session Token Preview (last 30 chars):', '...' + sessionToken.substring(sessionToken.length - 30));
+                    }} else {{
+                        console.log('✗ SESSION TOKEN NOT FOUND IN URL');
+                        console.log('URL Search was:', window.location.search);
+                    }}
+                    console.log('========================================');
+                    
+                    if (instanceUrl) {{
+                        console.log('✓ INSTANCE URL FOUND:', instanceUrl);
+                    }} else {{
+                        console.log('✗ INSTANCE URL NOT FOUND IN URL');
+                    }}
+                    
+                    // Show visible indicator that script is running
+                    const indicator = document.createElement('div');
+                    indicator.id = 'jsIndicator';
+                    indicator.style.cssText = 'background: #fff3cd; padding: 15px; margin: 10px 0; border: 2px solid #ffc107; border-radius: 5px; font-weight: bold; text-align: left;';
+                    indicator.innerHTML = '<strong>🔍 JavaScript Status:</strong><br>' +
+                        'Script loaded: ✓ YES<br>' +
+                        'Session token in URL: ' + (sessionToken ? '✓ YES (' + sessionToken.length + ' chars)' : '✗ NO') + '<br>' +
+                        'Instance URL in URL: ' + (instanceUrl ? '✓ YES' : '✗ NO') + '<br>' +
+                        '<small>Check browser console (F12) for detailed logs</small>';
+                    document.body.insertBefore(indicator, document.body.firstChild);
+                }} catch (e) {{
+                    console.error('IMMEDIATE: Error:', e);
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.cssText = 'background: #f8d7da; padding: 15px; margin: 10px 0; border: 2px solid #dc3545; border-radius: 5px;';
+                    errorDiv.innerHTML = '<strong>ERROR:</strong> ' + e.message;
+                    document.body.insertBefore(errorDiv, document.body.firstChild);
+                }}
+            }})();
+        </script>
+
+        <script>
+            // Wait for DOM to be ready
+            console.log('=== SCRIPT TAG 2: DOMContentLoaded SCRIPT ===');
+            console.log('=== Script tag loaded: ✓ YES ===');
+            console.log('Waiting for DOM to be ready...');
+            
+            document.addEventListener('DOMContentLoaded', function() {{
+                console.log('========================================');
+                console.log('=== DOMContentLoaded FIRED ===');
+                console.log('=== JAVASCRIPT IS RUNNING: ✓ YES ===');
+                console.log('=== DOM is ready, processing form ===');
+                console.log('========================================');
+                
+                try {{
+                    // Get session token from URL parameters
+                    console.log('--- Step 1: Reading URL Parameters ---');
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const sessionToken = urlParams.get('session_token');
+                    const instanceUrl = urlParams.get('instance_url');
+                    
+                    console.log('========================================');
+                    console.log('=== SESSION TOKEN READ FROM URL (DOMContentLoaded) ===');
+                    if (sessionToken) {{
+                        console.log('✓ SESSION TOKEN FOUND!');
+                        console.log('Session Token (FULL):', sessionToken);
+                        console.log('Session Token Length:', sessionToken.length, 'characters');
+                        console.log('Session Token Preview (first 30 chars):', sessionToken.substring(0, 30) + '...');
+                        console.log('Session Token Preview (last 30 chars):', '...' + sessionToken.substring(sessionToken.length - 30));
+                    }} else {{
+                        console.log('✗ SESSION TOKEN NOT FOUND IN URL');
+                        console.log('URL Search was:', window.location.search);
+                    }}
+                    console.log('========================================');
+                    
+                    if (instanceUrl) {{
+                        console.log('✓ INSTANCE URL FOUND:', instanceUrl);
+                    }} else {{
+                        console.log('✗ INSTANCE URL NOT FOUND IN URL');
+                    }}
                     
                     // Display comprehensive status on page (ALWAYS VISIBLE)
                     const container = document.querySelector('.container');
@@ -419,20 +517,42 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                     console.log('✓ Debug box inserted into page');
                     
                     // Set hidden field values from URL parameters
+                    console.log('--- Step 2: Setting Hidden Form Fields ---');
                     const sessionTokenField = document.getElementById('sessionTokenField');
                     const instanceUrlField = document.getElementById('instanceUrlField');
                     
+                    console.log('Session Token Field found:', sessionTokenField ? '✓ YES' : '✗ NO');
+                    console.log('Instance URL Field found:', instanceUrlField ? '✓ YES' : '✗ NO');
+                    
                     if (sessionToken && sessionTokenField) {{
                         sessionTokenField.value = sessionToken;
-                        console.log('✓ Set session_token hidden field value');
+                        console.log('========================================');
+                        console.log('=== SESSION TOKEN SET IN HIDDEN FIELD ===');
+                        console.log('✓ Hidden field value set successfully!');
+                        console.log('Hidden field value (FULL):', sessionTokenField.value);
+                        console.log('Hidden field value length:', sessionTokenField.value.length, 'characters');
+                        console.log('Verification - Field value matches URL token:', sessionTokenField.value === sessionToken ? '✓ YES' : '✗ NO');
+                        console.log('========================================');
                     }} else {{
-                        console.warn('✗ sessionToken is null/empty OR field not found');
+                        console.log('========================================');
+                        console.log('✗ FAILED TO SET SESSION TOKEN IN HIDDEN FIELD');
+                        console.log('Session Token from URL:', sessionToken ? 'EXISTS (' + sessionToken.length + ' chars)' : 'NULL/EMPTY');
+                        console.log('Session Token Field element:', sessionTokenField ? 'FOUND' : 'NOT FOUND');
+                        console.log('========================================');
                     }}
                     
                     if (instanceUrl && instanceUrlField) {{
                         instanceUrlField.value = instanceUrl;
-                        console.log('✓ Set instance_url hidden field value');
+                        console.log('✓ Set instance_url hidden field value:', instanceUrl);
+                    }} else {{
+                        console.log('✗ Failed to set instance_url - URL:', instanceUrl ? 'EXISTS' : 'NULL', 'Field:', instanceUrlField ? 'FOUND' : 'NOT FOUND');
                     }}
+                    
+                    // Verify script tags are present
+                    const allScripts = document.getElementsByTagName('script');
+                    console.log('--- Step 3: Verifying Script Tags ---');
+                    console.log('Total script tags in DOM:', allScripts.length);
+                    console.log('Script tags are loading: ✓ YES');
                     
                     // Update debug box to show hidden field values
                     const submitStatusEl = document.getElementById('formSubmitStatus');
@@ -441,6 +561,18 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                             'session_token: ' + (sessionTokenField && sessionTokenField.value ? '✓ SET (' + sessionTokenField.value.length + ' chars)' : '✗ NOT SET') + '<br>' +
                             'instance_url: ' + (instanceUrlField && instanceUrlField.value ? '✓ SET (' + instanceUrlField.value + ')' : '✗ NOT SET');
                     }}
+                    
+                    // Final summary
+                    console.log('========================================');
+                    console.log('=== FINAL SUMMARY ===');
+                    console.log('JavaScript running: ✓ YES');
+                    console.log('Script tags loaded: ✓ YES (' + allScripts.length + ' tags found)');
+                    console.log('Session token in URL: ' + (sessionToken ? '✓ YES (' + sessionToken.length + ' chars)' : '✗ NO'));
+                    console.log('Session token in hidden field: ' + (sessionTokenField && sessionTokenField.value ? '✓ YES (' + sessionTokenField.value.length + ' chars)' : '✗ NO'));
+                    console.log('Instance URL in URL: ' + (instanceUrl ? '✓ YES' : '✗ NO'));
+                    console.log('Instance URL in hidden field: ' + (instanceUrlField && instanceUrlField.value ? '✓ YES' : '✗ NO'));
+                    console.log('Form ready for submission: ✓ YES');
+                    console.log('========================================');
                     
                     // Define showMessage function
                     function showMessage(text, type) {{
@@ -458,17 +590,17 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                             submitStatusEl.innerHTML = 'Form submitted! Sending with hidden fields...';
                         }}
                         
-                        const fileInput = document.getElementById('file');
-                        const file = fileInput.files[0];
-                        
-                        if (!file) {{
-                            showMessage('Please select a file to upload.', 'error');
+                const fileInput = document.getElementById('file');
+                const file = fileInput.files[0];
+                
+                if (!file) {{
+                    showMessage('Please select a file to upload.', 'error');
                             if (submitStatusEl) {{
                                 submitStatusEl.innerHTML = '✗ ERROR: No file selected';
                             }}
-                            return;
-                        }}
-                        
+                    return;
+                }}
+                
                         // Create FormData from the form (this will include hidden fields automatically)
                         const formData = new FormData(form);
                         
@@ -499,24 +631,24 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                         if (submitStatusEl) {{
                             submitStatusEl.innerHTML = '<strong>FormData Contents:</strong><br>' + allEntries.join('<br>');
                         }}
-                        
-                        try {{
-                            const response = await fetch('/upload', {{
-                                method: 'POST',
-                                body: formData
-                            }});
-                            
-                            const result = await response.json();
-                            
-                            if (response.ok) {{
-                                showMessage('File uploaded successfully! You may now close this window.', 'success');
-                                document.getElementById('uploadForm').style.display = 'none';
-                            }} else {{
-                                showMessage('Error: ' + result.detail, 'error');
-                            }}
-                        }} catch (error) {{
-                            showMessage('Error uploading file: ' + error.message, 'error');
-                        }}
+                
+                try {{
+                    const response = await fetch('/upload', {{
+                        method: 'POST',
+                        body: formData
+                    }});
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {{
+                        showMessage('File uploaded successfully! You may now close this window.', 'success');
+                        document.getElementById('uploadForm').style.display = 'none';
+                    }} else {{
+                        showMessage('Error: ' + result.detail, 'error');
+                    }}
+                }} catch (error) {{
+                    showMessage('Error uploading file: ' + error.message, 'error');
+                }}
                     }}); // End form submit handler
                 }} catch (error) {{
                     console.error('ERROR in debug script:', error);

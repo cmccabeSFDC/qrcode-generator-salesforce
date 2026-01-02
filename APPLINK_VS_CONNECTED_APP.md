@@ -257,3 +257,6 @@ A: Not necessarily. Both use secure authentication. AppLink handles it automatic
 - [Heroku AppLink Documentation](https://devcenter.heroku.com/articles/salesforce-applink)
 - [OAuth2 Password Flow](https://help.salesforce.com/s/articleView?id=sf.remoteaccess_oauth_username_password_flow.htm)
 
+
+
+
