@@ -349,23 +349,52 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
             }}
         </style>
     </head>
-    <body>
-        <!-- VERSION IDENTIFIER - If you see v52, new code is loaded -->
-        <div style="background: purple; color: white; padding: 5px; text-align: center; font-weight: bold;">
-            FORM VERSION: v52 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-        </div>
-        
-        <!-- ABSOLUTE FIRST SCRIPT - Runs immediately, no dependencies -->
+    <body onload="console.log('BODY onload event fired - JavaScript is working!');">
+        <!-- JAVASCRIPT THAT RUNS ON PAGE LOAD - RIGHT AFTER BODY TAG -->
         <script>
-            console.log('=== JAVASCRIPT TEST v52 - ABSOLUTE FIRST ===');
-            console.log('If you see this, JavaScript parser is working!');
+            // THIS RUNS IMMEDIATELY WHEN SCRIPT TAG IS PARSED
+            console.log('========================================');
+            console.log('=== JAVASCRIPT RUNNING ON PAGE LOAD ===');
+            console.log('=== This script runs IMMEDIATELY after <body> tag ===');
+            console.log('=== If you see this in console, JavaScript is working! ===');
+            console.log('========================================');
             
-            // Create visible indicator immediately
-            var jsIndicator = document.createElement('div');
-            jsIndicator.style.cssText = 'background: lime; color: black; padding: 15px; margin: 10px; font-weight: bold; border: 3px solid green; font-size: 16px;';
-            jsIndicator.innerHTML = '✓✓✓ JAVASCRIPT IS RUNNING! (v52) ✓✓✓<br><small>Check browser console (F12) for detailed logs</small>';
-            document.body.insertBefore(jsIndicator, document.body.firstChild);
+            // Read session token from URL
+            var urlParams = new URLSearchParams(window.location.search);
+            var sessionToken = urlParams.get('session_token');
+            var instanceUrl = urlParams.get('instance_url');
+            
+            console.log('=== READING SESSION TOKEN FROM URL ===');
+            console.log('Full URL:', window.location.href);
+            console.log('URL Search (query string):', window.location.search);
+            
+            if (sessionToken) {{
+                console.log('✓✓✓ SESSION TOKEN FOUND IN URL! ✓✓✓');
+                console.log('Session Token (COMPLETE):', sessionToken);
+                console.log('Session Token Length:', sessionToken.length, 'characters');
+                console.log('Session Token First 30 chars:', sessionToken.substring(0, 30));
+                console.log('Session Token Last 30 chars:', sessionToken.substring(sessionToken.length - 30));
+            }} else {{
+                console.log('✗✗✗ SESSION TOKEN NOT FOUND IN URL ✗✗✗');
+                console.log('URL Search parameter:', window.location.search);
+            }}
+            
+            console.log('Instance URL:', instanceUrl || 'NOT FOUND');
+            console.log('========================================');
+            
+            // Create BIG visible indicator that JavaScript is running
+            var jsBox = document.createElement('div');
+            jsBox.style.cssText = 'background: #28a745; color: white; padding: 25px; margin: 15px; font-weight: bold; font-size: 20px; text-align: center; border: 5px solid #155724; border-radius: 10px;';
+            jsBox.innerHTML = '<div style="font-size: 24px;">✓✓✓ JAVASCRIPT IS RUNNING ON PAGE LOAD! ✓✓✓</div>' +
+                '<div style="font-size: 14px; margin-top: 10px;">Session Token from URL: ' + (sessionToken ? '✓ FOUND (' + sessionToken.length + ' chars)' : '✗ NOT FOUND') + '</div>' +
+                '<div style="font-size: 12px; margin-top: 5px;">Check browser console (F12) for full session token</div>';
+            document.body.insertBefore(jsBox, document.body.firstChild);
         </script>
+        
+        <!-- VERSION IDENTIFIER -->
+        <div style="background: purple; color: white; padding: 10px; text-align: center; font-weight: bold; font-size: 16px;">
+            FORM VERSION: v54 - JavaScript runs on page load (see green box above)
+        </div>
         
         <!-- Check if JavaScript is enabled -->
         <noscript>
