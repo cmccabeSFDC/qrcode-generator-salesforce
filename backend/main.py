@@ -350,6 +350,23 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
         </style>
     </head>
     <body>
+        <!-- VERSION IDENTIFIER - If you see v52, new code is loaded -->
+        <div style="background: purple; color: white; padding: 5px; text-align: center; font-weight: bold;">
+            FORM VERSION: v52 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        </div>
+        
+        <!-- ABSOLUTE FIRST SCRIPT - Runs immediately, no dependencies -->
+        <script>
+            console.log('=== JAVASCRIPT TEST v52 - ABSOLUTE FIRST ===');
+            console.log('If you see this, JavaScript parser is working!');
+            
+            // Create visible indicator immediately
+            var jsIndicator = document.createElement('div');
+            jsIndicator.style.cssText = 'background: lime; color: black; padding: 15px; margin: 10px; font-weight: bold; border: 3px solid green; font-size: 16px;';
+            jsIndicator.innerHTML = '✓✓✓ JAVASCRIPT IS RUNNING! (v52) ✓✓✓<br><small>Check browser console (F12) for detailed logs</small>';
+            document.body.insertBefore(jsIndicator, document.body.firstChild);
+        </script>
+        
         <!-- Check if JavaScript is enabled -->
         <noscript>
             <div style="background: #f8d7da; padding: 20px; margin: 20px; border: 2px solid #dc3545; border-radius: 5px;">
@@ -735,9 +752,8 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
     </body>
     </html>
     """
-    # Add headers to allow inline scripts (needed for JavaScript to run)
+    # Add headers - REMOVED CSP to test if it was blocking scripts
     headers = {
-        "Content-Security-Policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: *; script-src 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' *; img-src 'self' data: blob: *;",
         "X-Content-Type-Options": "nosniff"
     }
     return HTMLResponse(content=form_html, headers=headers)
