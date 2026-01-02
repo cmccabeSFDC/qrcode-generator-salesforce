@@ -13,6 +13,7 @@ import os
 import sys
 import uuid
 import html
+import time
 from datetime import datetime
 from salesforce_integration import salesforce_api
 
@@ -391,9 +392,9 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
             document.body.insertBefore(jsBox, document.body.firstChild);
         </script>
         
-        <!-- VERSION IDENTIFIER -->
+        <!-- VERSION IDENTIFIER - If you see v55, new code is loaded -->
         <div style="background: purple; color: white; padding: 10px; text-align: center; font-weight: bold; font-size: 16px;">
-            FORM VERSION: v54 - JavaScript runs on page load (see green box above)
+            FORM VERSION: v55 - JavaScript runs on page load (see green box above) - Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         </div>
         
         <!-- Check if JavaScript is enabled -->
@@ -782,12 +783,19 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
     </html>
     """
     # Add headers to prevent caching and allow scripts
+    import time
+    timestamp = int(time.time() * 1000)  # milliseconds for uniqueness
     headers = {
         "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
         "Pragma": "no-cache",
-        "Expires": "0"
+        "Expires": "0",
+        "Last-Modified": f"{datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT')}",
+        "ETag": f'"{timestamp}"'
     }
+    print(f"=== RETURNING HTML RESPONSE (v55) - Timestamp: {timestamp} ===", flush=True)
+    print(f"HTML length: {len(form_html)} characters", flush=True)
+    print(f"JavaScript present: {'YES' if '<script>' in form_html else 'NO'}", flush=True)
     return HTMLResponse(content=form_html, headers=headers)
 
 @app.post("/upload")
