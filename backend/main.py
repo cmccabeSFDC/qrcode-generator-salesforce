@@ -460,28 +460,12 @@ async def upload_file(
         print(f"Record ID: {record_id}", flush=True)
         print(f"File name: {file_name}", flush=True)
         
-        # CRITICAL: Parse form data manually to see what's actually being sent
-        print(f"=== PARSING RAW FORM DATA ===", flush=True)
-        form_data = await request.form()
-        print(f"Form data keys: {list(form_data.keys())}", flush=True)
-        for key in form_data.keys():
-            value = form_data.get(key)
-            if key == 'session_token':
-                print(f"  {key}: {'SET (' + str(len(value)) + ' chars)' if value else 'NOT SET'}", flush=True)
-                if value:
-                    print(f"    Preview: {value[:30]}...", flush=True)
-            elif key == 'instance_url':
-                print(f"  {key}: {value if value else 'NOT SET'}", flush=True)
-            elif key != 'file':  # Don't print file content
-                print(f"  {key}: {value}", flush=True)
-        
-        # Override with manually parsed values if they exist
-        if 'session_token' in form_data and form_data.get('session_token'):
-            session_token = form_data.get('session_token')
-            print(f"✓ Found session_token in raw form data!", flush=True)
-        if 'instance_url' in form_data and form_data.get('instance_url'):
-            instance_url = form_data.get('instance_url')
-            print(f"✓ Found instance_url in raw form data!", flush=True)
+        # Log what FastAPI parsed from Form parameters
+        print(f"=== FASTAPI FORM PARAMETERS ===", flush=True)
+        print(f"session_token from Form(): '{session_token}'", flush=True)
+        print(f"session_token type: {type(session_token)}", flush=True)
+        print(f"session_token length: {len(session_token) if session_token else 0}", flush=True)
+        print(f"instance_url from Form(): '{instance_url}'", flush=True)
         
         # Normalize: treat empty strings as None
         if session_token == "":
@@ -489,41 +473,38 @@ async def upload_file(
         if instance_url == "":
             instance_url = None
         
-        # Explicit logging for session token
-        print(f"=== SESSION TOKEN CHECK ===", flush=True)
-        print(f"session_token parameter value: {session_token}", flush=True)
-        print(f"session_token type: {type(session_token)}", flush=True)
-        print(f"session_token is None: {session_token is None}", flush=True)
-        print(f"session_token is empty string: {session_token == ''}", flush=True)
-        print(f"Session token from form: {'SET' if session_token else 'NOT SET'}", flush=True)
-        if session_token:
-            print(f"Session token length: {len(session_token)}", flush=True)
-            print(f"Session token preview: {session_token[:30]}...", flush=True)
-        print(f"Instance URL from form: {instance_url}", flush=True)
-        print(f"Instance URL from form: {'SET' if instance_url else 'NOT SET'}", flush=True)
+        # Also check AppLink headers (in case request came from Salesforce)
+        print(f"=== CHECKING APPLINK HEADERS ===", flush=True)
+        applink_auth = request.headers.get("Authorization")
+        applink_instance = request.headers.get("X-Salesforce-Instance-Url") or request.headers.get("X-Salesforce-Instance")
+        print(f"Authorization header: {'SET' if applink_auth else 'NOT SET'}", flush=True)
+        print(f"Instance URL header: {applink_instance if applink_instance else 'NOT SET'}", flush=True)
         
-        # Check for session token from form data (preferred) or headers (AppLink)
+        # Determine authentication method (priority: AppLink > Form session token > OAuth2)
         auth_header = None
-        if session_token:
-            # Session token from form field
+        print(f"=== AUTHENTICATION METHOD SELECTION ===", flush=True)
+        
+        # Priority 1: AppLink headers (if request came from Salesforce)
+        if applink_auth:
+            auth_header = applink_auth
+            instance_url = applink_instance or instance_url
+            print(f"✓ Using AppLink authentication (from headers)", flush=True)
+            print(f"  Authorization header: SET ({len(applink_auth)} chars)", flush=True)
+            if applink_instance:
+                print(f"  Instance URL from AppLink: {applink_instance}", flush=True)
+        
+        # Priority 2: Session token from form (if user scanned QR code)
+        elif session_token:
             auth_header = f"Bearer {session_token}"
-            print(f"=== SESSION TOKEN FROM FORM ===", flush=True)
-            print(f"Session token: SET (from form field)", flush=True)
-            print(f"Session token length: {len(session_token)}", flush=True)
+            print(f"✓ Using session token from form", flush=True)
+            print(f"  Session token length: {len(session_token)}", flush=True)
+            print(f"  Session token preview: {session_token[:30]}...", flush=True)
             if instance_url:
-                print(f"Instance URL from form: {instance_url}", flush=True)
+                print(f"  Instance URL from form: {instance_url}", flush=True)
+        
+        # Priority 3: OAuth2 fallback (will be handled in salesforce_integration.py)
         else:
-            # Fallback to AppLink headers
-            auth_header = request.headers.get("Authorization")
-            instance_url = instance_url or request.headers.get("X-Salesforce-Instance-Url") or request.headers.get("X-Salesforce-Instance")
-            org_id = request.headers.get("X-Salesforce-Org-Id")
-            print(f"=== APPLINK AUTHENTICATION CHECK ===", flush=True)
-            print(f"Authorization header: {'SET' if auth_header else 'NOT SET'}", flush=True)
-            if auth_header:
-                print(f"Authorization header length: {len(auth_header)}", flush=True)
-                print(f"Authorization header preview: {auth_header[:50]}...", flush=True)
-            print(f"Instance URL header: {instance_url}", flush=True)
-            print(f"Org ID header: {org_id}", flush=True)
+            print(f"✗ No AppLink headers or session token - will use OAuth2 fallback", flush=True)
         
         # Generate unique filename
         file_extension = os.path.splitext(file.filename)[1]
