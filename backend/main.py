@@ -752,9 +752,12 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
     </body>
     </html>
     """
-    # Add headers - REMOVED CSP to test if it was blocking scripts
+    # Add headers to prevent caching and allow scripts
     headers = {
-        "X-Content-Type-Options": "nosniff"
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
     }
     return HTMLResponse(content=form_html, headers=headers)
 
