@@ -268,7 +268,10 @@ async def add_company_logo(qr_img, logo_url):
 @app.get("/form/{record_id}")
 async def show_upload_form(record_id: str, company_logo_url: str = None, file_name: str = None, session_token: str = None, instance_url: str = None):
     """Display the upload form for file submission"""
-    # CRITICAL DEBUG: Log what we received
+    # CRITICAL DEBUG: Log what we received - FORCE IMMEDIATE OUTPUT
+    import sys
+    sys.stdout.write("=== FORM PAGE REQUEST DEBUG ===\n")
+    sys.stdout.flush()
     print(f"=== FORM PAGE REQUEST DEBUG ===", flush=True)
     print(f"record_id: {record_id}", flush=True)
     print(f"session_token: {session_token[:50] + '...' if session_token and len(session_token) > 50 else (session_token if session_token else 'NOT PROVIDED')}", flush=True)
@@ -793,9 +796,17 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
         "Last-Modified": f"{datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT')}",
         "ETag": f'"{timestamp}"'
     }
-    print(f"=== RETURNING HTML RESPONSE (v55) - Timestamp: {timestamp} ===", flush=True)
+    # FORCE IMMEDIATE OUTPUT - Multiple methods to ensure logs appear
+    import sys
+    sys.stdout.write(f"=== RETURNING HTML RESPONSE (v56) - Timestamp: {timestamp} ===\n")
+    sys.stdout.write(f"HTML length: {len(form_html)} characters\n")
+    sys.stdout.write(f"JavaScript present: {'YES' if '<script>' in form_html else 'NO'}\n")
+    sys.stdout.write(f"Number of <script> tags: {form_html.count('<script>')}\n")
+    sys.stdout.flush()
+    print(f"=== RETURNING HTML RESPONSE (v56) - Timestamp: {timestamp} ===", flush=True)
     print(f"HTML length: {len(form_html)} characters", flush=True)
     print(f"JavaScript present: {'YES' if '<script>' in form_html else 'NO'}", flush=True)
+    print(f"Number of <script> tags: {form_html.count('<script>')}", flush=True)
     return HTMLResponse(content=form_html, headers=headers)
 
 @app.post("/upload")
