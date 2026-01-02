@@ -376,8 +376,14 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                     // Show debug info on page load
                     console.log('=== FORM PAGE LOAD DEBUG ===');
                     console.log('URL params:', window.location.search);
-                    console.log('session_token from URL:', sessionToken ? 'SET (' + sessionToken.substring(0, 20) + '...)' : 'NOT SET');
-                    console.log('instance_url from URL:', instanceUrl || 'NOT SET');
+                    console.log('=== SESSION TOKEN FROM URL ===');
+                    console.log('session_token (full):', sessionToken || 'NOT SET');
+                    console.log('session_token length:', sessionToken ? sessionToken.length : 0);
+                    console.log('session_token preview:', sessionToken ? sessionToken.substring(0, 30) + '...' : 'NOT SET');
+                    console.log('session_token starts with:', sessionToken ? sessionToken.substring(0, 20) : 'NOT SET');
+                    console.log('=== INSTANCE URL FROM URL ===');
+                    console.log('instance_url:', instanceUrl || 'NOT SET');
+                    console.log('=== END FORM PAGE LOAD DEBUG ===');
                     
                     // Display comprehensive status on page (ALWAYS VISIBLE)
                     const container = document.querySelector('.container');

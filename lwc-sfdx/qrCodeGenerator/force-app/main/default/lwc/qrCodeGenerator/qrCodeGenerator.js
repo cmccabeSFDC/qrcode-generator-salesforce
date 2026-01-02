@@ -1,6 +1,8 @@
 import { LightningElement, track, api } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import generatePngBase64 from '@salesforce/apex/QRCodeService.generatePngBase64';
+import getSessionToken from '@salesforce/apex/QRCodeService.getSessionToken';
+import getInstanceUrl from '@salesforce/apex/QRCodeService.getInstanceUrl';
 
 export default class QrCodeGenerator extends LightningElement {
     @api companyLogoUrl = '';
@@ -18,10 +20,31 @@ export default class QrCodeGenerator extends LightningElement {
     herokuEndpoint = 'https://democomponent-qrcode-generator-c48b26ff05fc.herokuapp.com';
 
     // Record ID is automatically populated from the page context via @api recordId
-    connectedCallback() {
+    async connectedCallback() {
         // The recordId will be automatically populated by Salesforce
         // when the component is placed on a record page
+        console.log('=== LWC COMPONENT LOADED ===');
         console.log('Record ID automatically populated:', this.recordId);
+        
+        // Get and log session token (Session ID) on component load
+        try {
+            const sessionToken = await getSessionToken();
+            const instanceUrl = await getInstanceUrl();
+            
+            console.log('=== SESSION INFORMATION ===');
+            console.log('Session ID (from UserInfo.getSessionId()):', sessionToken);
+            console.log('Session ID length:', sessionToken ? sessionToken.length : 0);
+            console.log('Session ID preview:', sessionToken ? sessionToken.substring(0, 30) + '...' : 'NOT SET');
+            console.log('Instance URL:', instanceUrl);
+            console.log('=== END SESSION INFORMATION ===');
+            
+            // Note: In Salesforce LWC context, Session ID IS the access token for API calls
+            // There's no separate "access token" - the Session ID serves that purpose
+            console.log('Note: Session ID = Access Token for Salesforce API calls in LWC context');
+        } catch (error) {
+            console.error('Error getting session token on load:', error);
+        }
+        
         // Force refresh to ensure changes are applied
     }
 
@@ -74,8 +97,34 @@ export default class QrCodeGenerator extends LightningElement {
                 recordId: this.recordId
             });
             
+            // Get session token and instance URL for authentication
+            let sessionToken = '';
+            let instanceUrl = '';
+            try {
+                sessionToken = await getSessionToken();
+                instanceUrl = await getInstanceUrl();
+                console.log('=== SESSION TOKEN RETRIEVED (QR Code Generation) ===');
+                console.log('Session ID:', sessionToken);
+                console.log('Session ID length:', sessionToken ? sessionToken.length : 0);
+                console.log('Session ID preview:', sessionToken ? sessionToken.substring(0, 30) + '...' : 'NOT SET');
+                console.log('Instance URL:', instanceUrl);
+                console.log('=== END SESSION TOKEN INFO ===');
+            } catch (error) {
+                console.warn('Could not get session token or instance URL:', error);
+            }
+            
             // Create the form URL that the QR code will point to
-            this.formUrl = `${this.herokuEndpoint}/form/${this.recordId}?company_logo_url=${encodeURIComponent(this.companyLogoUrl)}&file_name=${encodeURIComponent(this.fileName)}`;
+            const formParams = new URLSearchParams({
+                company_logo_url: this.companyLogoUrl || '',
+                file_name: this.fileName || ''
+            });
+            if (sessionToken) {
+                formParams.append('session_token', sessionToken);
+            }
+            if (instanceUrl) {
+                formParams.append('instance_url', instanceUrl);
+            }
+            this.formUrl = `${this.herokuEndpoint}/form/${this.recordId}?${formParams.toString()}`;
             console.log('Form URL created:', this.formUrl);
             
             // Prepare the data for the QR code

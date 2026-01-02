@@ -77,4 +77,21 @@ public with sharing class QRCodeService {
             throw new AuraHandledException('Error calling QR service: ' + e.getMessage());
         }
     }
+
+    @AuraEnabled(cacheable=true)
+    public static String getSessionToken() {
+        // Get the current user's session ID
+        // NOTE: In Salesforce LWC context, Session ID IS the access token for API calls
+        // There is no separate "access token" - UserInfo.getSessionId() returns the token
+        // that should be used for Salesforce API authentication
+        String sessionId = UserInfo.getSessionId();
+        System.debug('Session ID (Access Token) retrieved: ' + (sessionId != null ? sessionId.substring(0, 20) + '...' : 'NULL'));
+        return sessionId;
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static String getInstanceUrl() {
+        // Get the organization's instance URL
+        return URL.getOrgDomainUrl().toExternalForm();
+    }
 }
