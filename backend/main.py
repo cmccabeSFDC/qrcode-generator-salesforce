@@ -353,7 +353,8 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                 1. Press F12 to open browser console<br>
                 2. Look for red box below - if it turns green, JavaScript is running<br>
                 3. Check console for detailed logs<br>
-                4. If nothing appears, JavaScript may be disabled or blocked
+                4. If nothing appears, JavaScript may be disabled or blocked<br>
+                5. <a href="javascript:alert('JavaScript works!');" style="color: #0070d2;">Click here to test JavaScript</a>
             </div>
             
             <!-- Server-side debug info (always visible, no JavaScript needed) -->
@@ -388,13 +389,19 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
         
         <!-- SIMPLE TEST - Should appear immediately if JavaScript works -->
         <div id="jsTest" style="background: red; color: white; padding: 10px; margin: 10px; font-weight: bold;">
-            JavaScript NOT running (this should be replaced by script)
+            ⚠️ JavaScript NOT running (this should be replaced by script if JS works)
+        </div>
+        
+        <!-- HTML-only test (no JavaScript needed) -->
+        <div style="background: blue; color: white; padding: 10px; margin: 10px; font-weight: bold;">
+            ✓ HTML is loading correctly (this appears without JavaScript)
         </div>
 
         <!-- IMMEDIATE SCRIPT - Runs before DOMContentLoaded -->
         <script>
             // SIMPLEST POSSIBLE TEST - This should ALWAYS run
             console.log('TEST 1: Script tag is being parsed');
+            console.log('TEST 2: If you see this, JavaScript is running!');
             
             // Replace the test div to prove JavaScript is running
             try {{
@@ -701,7 +708,12 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
     </body>
     </html>
     """
-    return HTMLResponse(content=form_html)
+    # Add headers to allow inline scripts (needed for JavaScript to run)
+    headers = {
+        "Content-Security-Policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: *; script-src 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' *; img-src 'self' data: blob: *;",
+        "X-Content-Type-Options": "nosniff"
+    }
+    return HTMLResponse(content=form_html, headers=headers)
 
 @app.post("/upload")
 async def upload_file(
