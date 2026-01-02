@@ -347,6 +347,15 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
         <div class="container">
             <h1>File Upload</h1>
             
+            <!-- Instructions for debugging -->
+            <div style="background: #e7f3ff; padding: 10px; margin: 10px 0; border: 2px solid #0070d2; border-radius: 5px; font-size: 12px;">
+                <strong>🔍 Debug Instructions:</strong><br>
+                1. Press F12 to open browser console<br>
+                2. Look for red box below - if it turns green, JavaScript is running<br>
+                3. Check console for detailed logs<br>
+                4. If nothing appears, JavaScript may be disabled or blocked
+            </div>
+            
             <!-- Server-side debug info (always visible, no JavaScript needed) -->
             <div style="background: #e7f3ff; padding: 15px; margin: 10px 0; border: 2px solid #0070d2; border-radius: 5px; text-align: left; font-family: monospace; font-size: 11px;">
                 <strong>📋 Server-Side Debug (from URL parameters):</strong><br>
@@ -376,9 +385,30 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
             
             <div id="message"></div>
         </div>
+        
+        <!-- SIMPLE TEST - Should appear immediately if JavaScript works -->
+        <div id="jsTest" style="background: red; color: white; padding: 10px; margin: 10px; font-weight: bold;">
+            JavaScript NOT running (this should be replaced by script)
+        </div>
 
         <!-- IMMEDIATE SCRIPT - Runs before DOMContentLoaded -->
         <script>
+            // SIMPLEST POSSIBLE TEST - This should ALWAYS run
+            console.log('TEST 1: Script tag is being parsed');
+            
+            // Replace the test div to prove JavaScript is running
+            try {{
+                const testDiv = document.getElementById('jsTest');
+                if (testDiv) {{
+                    testDiv.style.background = 'green';
+                    testDiv.innerHTML = '✓ JavaScript IS running! Check browser console (F12) for detailed logs.';
+                }} else {{
+                    console.error('jsTest div not found!');
+                }}
+            }} catch (e) {{
+                console.error('Error updating test div:', e);
+            }}
+            
             // This runs IMMEDIATELY when script tag is parsed
             (function() {{
                 console.log('========================================');
