@@ -354,127 +354,162 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
         </div>
 
         <script>
-            // CRITICAL DEBUG: Log everything immediately
-            console.log('=== SCRIPT LOADED ===');
-            console.log('Full URL:', window.location.href);
-            console.log('URL Search:', window.location.search);
-            
-            // Get session token from URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const sessionToken = urlParams.get('session_token');
-            const instanceUrl = urlParams.get('instance_url');
-            
-            // Show debug info on page load
-            console.log('=== FORM PAGE LOAD DEBUG ===');
-            console.log('URL params:', window.location.search);
-            console.log('session_token from URL:', sessionToken ? 'SET (' + sessionToken.substring(0, 20) + '...)' : 'NOT SET');
-            console.log('instance_url from URL:', instanceUrl || 'NOT SET');
-            
-            // Display comprehensive status on page (ALWAYS VISIBLE)
-            const statusDiv = document.createElement('div');
-            statusDiv.id = 'debugStatus';
-            statusDiv.style.cssText = 'font-size: 11px; color: #333; margin: 10px 0; padding: 15px; background: #f0f0f0; border: 2px solid #0070d2; border-radius: 5px; text-align: left; font-family: monospace;';
-            
-            let debugHtml = '<strong style="color: #0070d2;">🔍 DEBUG INFORMATION</strong><br><br>';
-            debugHtml += '<strong>Step 1: URL Parameters</strong><br>';
-            debugHtml += 'Full URL: ' + window.location.href.substring(0, 100) + '...<br>';
-            debugHtml += 'URL Search: ' + window.location.search + '<br><br>';
-            
-            debugHtml += '<strong>Step 2: Extracted Values</strong><br>';
-            debugHtml += 'session_token: ' + (sessionToken ? '✓ FOUND (' + sessionToken.length + ' chars, starts with: ' + sessionToken.substring(0, 20) + '...)' : '✗ NOT FOUND') + '<br>';
-            debugHtml += 'instance_url: ' + (instanceUrl ? '✓ FOUND (' + instanceUrl + ')' : '✗ NOT FOUND') + '<br><br>';
-            
-            debugHtml += '<strong>Step 3: Form Submission</strong><br>';
-            debugHtml += '<span id="formSubmitStatus">Waiting for form submission...</span><br>';
-            
-            statusDiv.innerHTML = debugHtml;
-            document.querySelector('.container').insertBefore(statusDiv, document.getElementById('uploadForm'));
-            
-            document.getElementById('uploadForm').addEventListener('submit', async function(e) {{
-                e.preventDefault();
-                
-                // Update visible debug status
-                const submitStatusEl = document.getElementById('formSubmitStatus');
-                submitStatusEl.innerHTML = 'Form submitted! Checking values...';
-                
-                const formData = new FormData();
-                const fileInput = document.getElementById('file');
-                const file = fileInput.files[0];
-                
-                if (!file) {{
-                    showMessage('Please select a file to upload.', 'error');
-                    submitStatusEl.innerHTML = '✗ ERROR: No file selected';
-                    return;
-                }}
-                
-                formData.append('file', file);
-                formData.append('record_id', '{record_id}');
-                formData.append('file_name', '{file_name or "uploaded_file"}');
-                
-                // Add Salesforce session token as form field (can't use headers with FormData)
-                console.log('=== FORM SUBMISSION DEBUG ===');
-                console.log('DEBUG: sessionToken from URL:', sessionToken ? 'SET (' + sessionToken.substring(0, 20) + '...)' : 'NOT SET');
-                console.log('DEBUG: instanceUrl from URL:', instanceUrl || 'NOT SET');
-                
-                let formDataEntries = [];
-                if (sessionToken) {{
-                    formData.append('session_token', sessionToken);
-                    formDataEntries.push('session_token: ' + sessionToken.substring(0, 30) + '...');
-                    console.log('✓ Added session_token to FormData');
-                    if (instanceUrl) {{
-                        formData.append('instance_url', instanceUrl);
-                        formDataEntries.push('instance_url: ' + instanceUrl);
-                        console.log('✓ Added instance_url to FormData');
-                    }}
-                }} else {{
-                    console.warn('✗ sessionToken is null/empty, NOT adding to FormData');
-                    formDataEntries.push('session_token: ✗ NOT ADDED (was null/empty)');
-                }}
-                
-                // Debug: Log all FormData entries
-                console.log('DEBUG: FormData entries:');
-                let allEntries = [];
-                for (let pair of formData.entries()) {{
-                    if (pair[0] === 'session_token') {{
-                        const entry = pair[0] + ': ' + pair[1].substring(0, 30) + '... (' + pair[1].length + ' chars)';
-                        console.log('  ' + entry);
-                        allEntries.push(entry);
-                    }} else if (pair[0] === 'instance_url') {{
-                        const entry = pair[0] + ': ' + pair[1];
-                        console.log('  ' + entry);
-                        allEntries.push(entry);
-                    }} else {{
-                        const entry = pair[0] + ': ' + (typeof pair[1] === 'string' ? pair[1] : pair[1].name);
-                        console.log('  ' + entry);
-                        allEntries.push(entry);
-                    }}
-                }}
-                
-                // Update visible debug
-                submitStatusEl.innerHTML = '<strong>FormData Contents:</strong><br>' + allEntries.join('<br>');
-                
+            // Wait for DOM to be ready
+            document.addEventListener('DOMContentLoaded', function() {{
                 try {{
-                    const response = await fetch('/upload', {{
-                        method: 'POST',
-                        body: formData
-                    }});
+                    // CRITICAL DEBUG: Log everything immediately
+                    console.log('=== SCRIPT LOADED ===');
+                    console.log('Full URL:', window.location.href);
+                    console.log('URL Search:', window.location.search);
                     
-                    const result = await response.json();
+                    // Get session token from URL parameters
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const sessionToken = urlParams.get('session_token');
+                    const instanceUrl = urlParams.get('instance_url');
                     
-                    if (response.ok) {{
-                        showMessage('File uploaded successfully! You may now close this window.', 'success');
-                        document.getElementById('uploadForm').style.display = 'none';
-                    }} else {{
-                        showMessage('Error: ' + result.detail, 'error');
+                    // Show debug info on page load
+                    console.log('=== FORM PAGE LOAD DEBUG ===');
+                    console.log('URL params:', window.location.search);
+                    console.log('session_token from URL:', sessionToken ? 'SET (' + sessionToken.substring(0, 20) + '...)' : 'NOT SET');
+                    console.log('instance_url from URL:', instanceUrl || 'NOT SET');
+                    
+                    // Display comprehensive status on page (ALWAYS VISIBLE)
+                    const container = document.querySelector('.container');
+                    const form = document.getElementById('uploadForm');
+                    
+                    if (!container) {{
+                        console.error('ERROR: .container element not found!');
+                        return;
                     }}
+                    if (!form) {{
+                        console.error('ERROR: #uploadForm element not found!');
+                        return;
+                    }}
+                    
+                    const statusDiv = document.createElement('div');
+                    statusDiv.id = 'debugStatus';
+                    statusDiv.style.cssText = 'font-size: 11px; color: #333; margin: 10px 0; padding: 15px; background: #f0f0f0; border: 2px solid #0070d2; border-radius: 5px; text-align: left; font-family: monospace;';
+                    
+                    let debugHtml = '<strong style="color: #0070d2;">🔍 DEBUG INFORMATION</strong><br><br>';
+                    debugHtml += '<strong>Step 1: URL Parameters</strong><br>';
+                    debugHtml += 'Full URL: ' + window.location.href.substring(0, 100) + '...<br>';
+                    debugHtml += 'URL Search: ' + window.location.search + '<br><br>';
+                    
+                    debugHtml += '<strong>Step 2: Extracted Values</strong><br>';
+                    debugHtml += 'session_token: ' + (sessionToken ? '✓ FOUND (' + sessionToken.length + ' chars, starts with: ' + sessionToken.substring(0, 20) + '...)' : '✗ NOT FOUND') + '<br>';
+                    debugHtml += 'instance_url: ' + (instanceUrl ? '✓ FOUND (' + instanceUrl + ')' : '✗ NOT FOUND') + '<br><br>';
+                    
+                    debugHtml += '<strong>Step 3: Form Submission</strong><br>';
+                    debugHtml += '<span id="formSubmitStatus">Waiting for form submission...</span><br>';
+                    
+                    statusDiv.innerHTML = debugHtml;
+                    container.insertBefore(statusDiv, form);
+                    console.log('✓ Debug box inserted into page');
+                    
+                    // Define showMessage function first
+                    function showMessage(text, type) {{
+                        const messageDiv = document.getElementById('message');
+                        messageDiv.innerHTML = '<div class="' + type + '">' + text + '</div>';
+                    }}
+                    
+                    // Set up form submission handler (inside DOMContentLoaded so variables are accessible)
+                    form.addEventListener('submit', async function(e) {{
+                        e.preventDefault();
+                        
+                        // Update visible debug status
+                        const submitStatusEl = document.getElementById('formSubmitStatus');
+                        submitStatusEl.innerHTML = 'Form submitted! Checking values...';
+                        
+                        const formData = new FormData();
+                        const fileInput = document.getElementById('file');
+                        const file = fileInput.files[0];
+                        
+                        if (!file) {{
+                            showMessage('Please select a file to upload.', 'error');
+                            submitStatusEl.innerHTML = '✗ ERROR: No file selected';
+                            return;
+                        }}
+                        
+                        formData.append('file', file);
+                        formData.append('record_id', '{record_id}');
+                        formData.append('file_name', '{file_name or "uploaded_file"}');
+                        
+                        // Add Salesforce session token as form field (can't use headers with FormData)
+                        console.log('=== FORM SUBMISSION DEBUG ===');
+                        console.log('DEBUG: sessionToken from URL:', sessionToken ? 'SET (' + sessionToken.substring(0, 20) + '...)' : 'NOT SET');
+                        console.log('DEBUG: instanceUrl from URL:', instanceUrl || 'NOT SET');
+                        
+                        let formDataEntries = [];
+                        if (sessionToken) {{
+                            formData.append('session_token', sessionToken);
+                            formDataEntries.push('session_token: ' + sessionToken.substring(0, 30) + '...');
+                            console.log('✓ Added session_token to FormData');
+                            if (instanceUrl) {{
+                                formData.append('instance_url', instanceUrl);
+                                formDataEntries.push('instance_url: ' + instanceUrl);
+                                console.log('✓ Added instance_url to FormData');
+                            }}
+                        }} else {{
+                            console.warn('✗ sessionToken is null/empty, NOT adding to FormData');
+                            formDataEntries.push('session_token: ✗ NOT ADDED (was null/empty)');
+                        }}
+                        
+                        // Debug: Log all FormData entries
+                        console.log('DEBUG: FormData entries:');
+                        let allEntries = [];
+                        for (let pair of formData.entries()) {{
+                            if (pair[0] === 'session_token') {{
+                                const entry = pair[0] + ': ' + pair[1].substring(0, 30) + '... (' + pair[1].length + ' chars)';
+                                console.log('  ' + entry);
+                                allEntries.push(entry);
+                            }} else if (pair[0] === 'instance_url') {{
+                                const entry = pair[0] + ': ' + pair[1];
+                                console.log('  ' + entry);
+                                allEntries.push(entry);
+                            }} else {{
+                                const entry = pair[0] + ': ' + (typeof pair[1] === 'string' ? pair[1] : pair[1].name);
+                                console.log('  ' + entry);
+                                allEntries.push(entry);
+                            }}
+                        }}
+                        
+                        // Update visible debug
+                        submitStatusEl.innerHTML = '<strong>FormData Contents:</strong><br>' + allEntries.join('<br>');
+                        
+                        try {{
+                            const response = await fetch('/upload', {{
+                                method: 'POST',
+                                body: formData
+                            }});
+                            
+                            const result = await response.json();
+                            
+                            if (response.ok) {{
+                                showMessage('File uploaded successfully! You may now close this window.', 'success');
+                                document.getElementById('uploadForm').style.display = 'none';
+                            }} else {{
+                                showMessage('Error: ' + result.detail, 'error');
+                            }}
+                        }} catch (error) {{
+                            showMessage('Error uploading file: ' + error.message, 'error');
+                        }}
+                    }}); // End form submit handler
                 }} catch (error) {{
-                    showMessage('Error uploading file: ' + error.message, 'error');
+                    console.error('ERROR in debug script:', error);
+                    // Try to show error on page
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.cssText = 'color: red; padding: 10px; background: #ffe6e6; border: 2px solid red; margin: 10px 0;';
+                    errorDiv.innerHTML = 'ERROR: ' + error.message;
+                    document.body.insertBefore(errorDiv, document.body.firstChild);
                 }}
-            }});
+            }}); // End DOMContentLoaded
             
-            function showMessage(text, type) {{
-                const messageDiv = document.getElementById('message');
-                messageDiv.innerHTML = '<div class="' + type + '">' + text + '</div>';
+            // Also run immediately if DOM is already loaded
+            if (document.readyState === 'loading') {{
+                // DOMContentLoaded will fire
+            }} else {{
+                // DOM is already loaded, trigger manually
+                document.dispatchEvent(new Event('DOMContentLoaded'));
             }}
         </script>
     </body>
