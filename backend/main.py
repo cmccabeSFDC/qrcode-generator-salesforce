@@ -368,10 +368,10 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
             
             {f'<img src="{company_logo_url}" alt="Company Logo" class="logo" onerror="this.style.display=&quot;none&quot;">' if company_logo_url else ''}
             
-            <form id="uploadForm" enctype="multipart/form-data">
-                <!-- Hidden fields - will be populated by JavaScript -->
-                <input type="hidden" id="sessionTokenField" name="session_token" value="">
-                <input type="hidden" id="instanceUrlField" name="instance_url" value="">
+            <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+                <!-- Hidden fields - Set server-side so they work even without JavaScript -->
+                <input type="hidden" id="sessionTokenField" name="session_token" value="{session_token or ''}">
+                <input type="hidden" id="instanceUrlField" name="instance_url" value="{instance_url or ''}">
                 <input type="hidden" name="record_id" value="{record_id}">
                 <input type="hidden" name="file_name" value="{file_name or 'uploaded_file'}">
                 
@@ -618,7 +618,10 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                     }}
                     
                     // Set up form submission handler - use standard form submission with hidden fields
+                    // Note: If JavaScript doesn't work, form will submit normally via action="/upload"
                     form.addEventListener('submit', async function(e) {{
+                        // Only prevent default if we want to use async fetch (for better UX)
+                        // If this fails, form will submit normally via HTML action attribute
                         e.preventDefault();
                         
                         // Update visible debug status
