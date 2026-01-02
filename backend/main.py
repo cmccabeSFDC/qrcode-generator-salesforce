@@ -357,6 +357,22 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
             // Get session token from URL parameters
             const urlParams = new URLSearchParams(window.location.search);
             const sessionToken = urlParams.get('session_token');
+            const instanceUrl = urlParams.get('instance_url');
+            
+            // Show debug info on page load
+            console.log('=== FORM PAGE LOAD DEBUG ===');
+            console.log('URL params:', window.location.search);
+            console.log('session_token from URL:', sessionToken ? 'SET (' + sessionToken.substring(0, 20) + '...)' : 'NOT SET');
+            console.log('instance_url from URL:', instanceUrl || 'NOT SET');
+            
+            // Display status on page
+            const statusDiv = document.createElement('div');
+            statusDiv.id = 'debugStatus';
+            statusDiv.style.cssText = 'font-size: 12px; color: #666; margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 5px;';
+            statusDiv.innerHTML = '<strong>Debug Info:</strong><br>' +
+                'Session Token: ' + (sessionToken ? '✓ Found (' + sessionToken.substring(0, 20) + '...)' : '✗ NOT FOUND') + '<br>' +
+                'Instance URL: ' + (instanceUrl || '✗ NOT FOUND');
+            document.querySelector('.container').insertBefore(statusDiv, document.getElementById('uploadForm'));
             
             document.getElementById('uploadForm').addEventListener('submit', async function(e) {{
                 e.preventDefault();
@@ -375,7 +391,6 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                 formData.append('file_name', '{file_name or "uploaded_file"}');
                 
                 // Add Salesforce session token as form field (can't use headers with FormData)
-                const instanceUrl = urlParams.get('instance_url');
                 console.log('DEBUG: sessionToken from URL:', sessionToken ? 'SET (' + sessionToken.substring(0, 20) + '...)' : 'NOT SET');
                 console.log('DEBUG: instanceUrl from URL:', instanceUrl || 'NOT SET');
                 if (sessionToken) {{
@@ -434,8 +449,8 @@ async def upload_file(
     file: UploadFile = File(...),
     record_id: str = Form(...),
     file_name: str = Form(...),
-    session_token: str = Form(None),
-    instance_url: str = Form(None)
+    session_token: str = Form(""),
+    instance_url: str = Form("")
 ):
     """Handle file upload and send to Salesforce"""
     try:
@@ -444,6 +459,35 @@ async def upload_file(
         print(f"File content type: {file.content_type}", flush=True)
         print(f"Record ID: {record_id}", flush=True)
         print(f"File name: {file_name}", flush=True)
+        
+        # CRITICAL: Parse form data manually to see what's actually being sent
+        print(f"=== PARSING RAW FORM DATA ===", flush=True)
+        form_data = await request.form()
+        print(f"Form data keys: {list(form_data.keys())}", flush=True)
+        for key in form_data.keys():
+            value = form_data.get(key)
+            if key == 'session_token':
+                print(f"  {key}: {'SET (' + str(len(value)) + ' chars)' if value else 'NOT SET'}", flush=True)
+                if value:
+                    print(f"    Preview: {value[:30]}...", flush=True)
+            elif key == 'instance_url':
+                print(f"  {key}: {value if value else 'NOT SET'}", flush=True)
+            elif key != 'file':  # Don't print file content
+                print(f"  {key}: {value}", flush=True)
+        
+        # Override with manually parsed values if they exist
+        if 'session_token' in form_data and form_data.get('session_token'):
+            session_token = form_data.get('session_token')
+            print(f"✓ Found session_token in raw form data!", flush=True)
+        if 'instance_url' in form_data and form_data.get('instance_url'):
+            instance_url = form_data.get('instance_url')
+            print(f"✓ Found instance_url in raw form data!", flush=True)
+        
+        # Normalize: treat empty strings as None
+        if session_token == "":
+            session_token = None
+        if instance_url == "":
+            instance_url = None
         
         # Explicit logging for session token
         print(f"=== SESSION TOKEN CHECK ===", flush=True)
