@@ -306,6 +306,8 @@ class SalesforceAPI:
         applink_auth_token: Optional[str] = None,
         applink_instance_url: Optional[str] = None
     ) -> Dict[str, Any]:
+        # Store applink_auth_token for use in error handling
+        self._applink_auth_token = applink_auth_token
         """Upload a file to a Salesforce record as a ContentDocument"""
         try:
             print(f"=== UPLOAD FILE TO RECORD DEBUG ===")
@@ -315,19 +317,23 @@ class SalesforceAPI:
             
             # Use AppLink authentication if provided
             if applink_auth_token:
-                print(f"Using AppLink authentication", flush=True)
+                print(f"Attempting to use session token from form", flush=True)
                 # Extract token from "Bearer <token>" format if needed
                 if applink_auth_token.startswith("Bearer "):
-                    self.access_token = applink_auth_token[7:]  # Remove "Bearer " prefix
+                    session_token = applink_auth_token[7:]  # Remove "Bearer " prefix
                 else:
-                    self.access_token = applink_auth_token
+                    session_token = applink_auth_token
                 
                 # Use AppLink instance URL if provided, otherwise keep existing
                 if applink_instance_url:
                     self.base_url = applink_instance_url.rstrip('/')
-                    print(f"Using AppLink instance URL: {self.base_url}", flush=True)
+                    print(f"Using instance URL from form: {self.base_url}", flush=True)
                 
-                print(f"AppLink access token set. Length: {len(self.access_token)}", flush=True)
+                print(f"Session token from form. Length: {len(session_token)}", flush=True)
+                print(f"NOTE: Session tokens from Apex may not work with REST API. Will try first, then fall back to OAuth2 if needed.", flush=True)
+                
+                # Try the session token first, but we'll fall back to OAuth2 if it fails
+                self.access_token = session_token
             elif not self.access_token:
                 print(f"Access token not available, attempting OAuth2 authentication...")
                 if not await self.authenticate():
@@ -337,7 +343,7 @@ class SalesforceAPI:
             
             # Step 1: Create ContentVersion
             print(f"=== STEP 1: Creating ContentVersion ===")
-            content_version = await self.create_content_version(file_path, file_name)
+            content_version = await self.create_content_version(file_path, file_name, applink_auth_token)
             print(f"ContentVersion result: {content_version}")
             if content_version.get('status') == 'error':
                 return content_version
@@ -372,7 +378,7 @@ class SalesforceAPI:
             print(f"Traceback: {traceback.format_exc()}")
             return {"status": "error", "message": f"Upload failed: {str(e)}"}
     
-    async def create_content_version(self, file_path: str, file_name: str) -> Dict[str, Any]:
+    async def create_content_version(self, file_path: str, file_name: str, applink_auth_token: Optional[str] = None) -> Dict[str, Any]:
         """Create a ContentVersion record in Salesforce"""
         try:
             # Read file content
@@ -418,9 +424,44 @@ class SalesforceAPI:
             
         except requests.exceptions.HTTPError as e:
             error_msg = f"ContentVersion creation failed: {str(e)}"
+            error_response_text = ""
             if hasattr(e.response, 'text'):
-                error_msg += f" - Response: {e.response.text}"
+                error_response_text = e.response.text
+                error_msg += f" - Response: {error_response_text}"
             print(f"HTTP Error: {error_msg}", flush=True)
+            
+            # If we got 401 with INVALID_SESSION_ID, session token doesn't work with REST API
+            # Fall back to OAuth2 authentication
+            if e.response.status_code == 401 and applink_auth_token and "INVALID_SESSION_ID" in error_response_text:
+                print(f"⚠️  Session token from Apex is not valid for REST API (INVALID_SESSION_ID)", flush=True)
+                print(f"Falling back to OAuth2 authentication...", flush=True)
+                # Clear the failed token
+                self.access_token = None
+                # Try OAuth2
+                if await self.authenticate():
+                    print(f"✓ OAuth2 authentication successful. Retrying ContentVersion creation...", flush=True)
+                    # Retry the request with OAuth2 token
+                    try:
+                        response = requests.post(url, headers={
+                            'Authorization': f'Bearer {self.access_token}',
+                            'Content-Type': 'application/json'
+                        }, json=content_version_data)
+                        response.raise_for_status()
+                        result = response.json()
+                        print(f"✓ ContentVersion created successfully with OAuth2 token", flush=True)
+                        return {
+                            "status": "success",
+                            "id": result['id']
+                        }
+                    except requests.exceptions.HTTPError as retry_error:
+                        retry_error_msg = f"OAuth2 retry also failed: {str(retry_error)}"
+                        if hasattr(retry_error.response, 'text'):
+                            retry_error_msg += f" - Response: {retry_error.response.text}"
+                        print(f"✗ {retry_error_msg}", flush=True)
+                        return {"status": "error", "message": retry_error_msg}
+                else:
+                    return {"status": "error", "message": "Session token invalid for REST API and OAuth2 authentication also failed"}
+            
             return {"status": "error", "message": error_msg}
         except Exception as e:
             error_msg = f"ContentVersion creation failed: {str(e)}"
