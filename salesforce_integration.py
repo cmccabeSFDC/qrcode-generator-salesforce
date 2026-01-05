@@ -54,8 +54,6 @@ class SalesforceAPI:
             # Fallback to OAuth2 if no Session ID
             if self.client_id and self.client_secret and self.username and self.password:
                 print(f"Using OAuth2 authentication", flush=True)
-                auth_url = f"{self.base_url}/services/oauth2/token"
-                print(f"Auth URL: {auth_url}", flush=True)
                 
                 # Build password - include security token if provided
                 password = self.password
@@ -75,20 +73,33 @@ class SalesforceAPI:
                 
                 # Don't log the actual password, but log the data structure
                 print(f"Auth data (password hidden): grant_type={data['grant_type']}, client_id={data['client_id']}, username={data['username']}", flush=True)
-                print(f"Password format check:", flush=True)
-                print(f"  - Password length: {len(self.password)}", flush=True)
-                print(f"  - Security token length: {len(self.security_token) if self.security_token else 0}", flush=True)
-                print(f"  - Combined password length: {len(password)}", flush=True)
-                print(f"  - Password first 4 chars: {self.password[:4] if len(self.password) >= 4 else self.password}", flush=True)
-                print(f"  - Security token first 4 chars: {self.security_token[:4] if self.security_token and len(self.security_token) >= 4 else 'N/A'}", flush=True)
-                print(f"  - Combined format: password({len(self.password)}) + token({len(self.security_token) if self.security_token else 0}) = {len(password)} chars", flush=True)
+                
+                # Try My Domain URL first
+                auth_url = f"{self.base_url}/services/oauth2/token"
+                print(f"Attempting OAuth2 with My Domain URL: {auth_url}", flush=True)
                 print(f"Making OAuth2 request...", flush=True)
                 
-                # Use data parameter (not json) - requests will URL-encode automatically
                 response = requests.post(auth_url, data=data)
                 print(f"Response status: {response.status_code}", flush=True)
                 print(f"Response headers: {dict(response.headers)}", flush=True)
                 print(f"Response text: {response.text}", flush=True)
+                
+                # If My Domain URL fails with 400, try login.salesforce.com as fallback
+                if response.status_code == 400:
+                    print(f"\n⚠️  My Domain URL failed, trying login.salesforce.com as fallback...", flush=True)
+                    auth_url_fallback = "https://login.salesforce.com/services/oauth2/token"
+                    print(f"Attempting OAuth2 with login.salesforce.com: {auth_url_fallback}", flush=True)
+                    
+                    response_fallback = requests.post(auth_url_fallback, data=data)
+                    print(f"Fallback response status: {response_fallback.status_code}", flush=True)
+                    print(f"Fallback response text: {response_fallback.text}", flush=True)
+                    
+                    if response_fallback.status_code == 200:
+                        print(f"✅ SUCCESS with login.salesforce.com!", flush=True)
+                        response = response_fallback
+                    else:
+                        print(f"❌ Fallback also failed, using original response for error analysis", flush=True)
+                        # Continue with original response for detailed error analysis below
                 
                 # If 400 error, show detailed debug info BEFORE raising exception
                 if response.status_code == 400:
@@ -287,61 +298,49 @@ class SalesforceAPI:
             print(f"Traceback: {traceback.format_exc()}")
             return False
     
-    async def upload_file_to_record(self, record_id: str, file_path: str, file_name: str) -> Dict[str, Any]:
+    async def upload_file_to_record(
+        self, 
+        record_id: str, 
+        file_path: str, 
+        file_name: str,
+        applink_auth_token: Optional[str] = None,
+        applink_instance_url: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Upload a file to a Salesforce record as a ContentDocument"""
         try:
-            print(f"=== UPLOAD FILE TO RECORD DEBUG ===", flush=True)
-            print(f"Record ID: {record_id}", flush=True)
-            print(f"File path: {file_path}", flush=True)
-            print(f"File name: {file_name}", flush=True)
-            print(f"Access token: {'SET' if self.access_token else 'NOT SET'}", flush=True)
+            print(f"=== UPLOAD FILE TO RECORD DEBUG ===")
+            print(f"Record ID: {record_id}")
+            print(f"File path: {file_path}")
+            print(f"File name: {file_name}")
             
-            if not self.access_token:
-                print(f"Access token not available, attempting authentication...", flush=True)
+            # Use AppLink authentication if provided
+            if applink_auth_token:
+                print(f"Using AppLink authentication", flush=True)
+                # Extract token from "Bearer <token>" format if needed
+                if applink_auth_token.startswith("Bearer "):
+                    self.access_token = applink_auth_token[7:]  # Remove "Bearer " prefix
+                else:
+                    self.access_token = applink_auth_token
+                
+                # Use AppLink instance URL if provided, otherwise keep existing
+                if applink_instance_url:
+                    self.base_url = applink_instance_url.rstrip('/')
+                    print(f"Using AppLink instance URL: {self.base_url}", flush=True)
+                
+                print(f"AppLink access token set. Length: {len(self.access_token)}", flush=True)
+            elif not self.access_token:
+                print(f"Access token not available, attempting OAuth2 authentication...")
                 if not await self.authenticate():
                     return {"status": "error", "message": "Authentication failed"}
+            else:
+                print(f"Using existing access token (OAuth2/Session ID)", flush=True)
             
             # Step 1: Create ContentVersion
-            print(f"=== STEP 1: Creating ContentVersion ===", flush=True)
+            print(f"=== STEP 1: Creating ContentVersion ===")
             content_version = await self.create_content_version(file_path, file_name)
-            print(f"ContentVersion result: {content_version}", flush=True)
-            
-            # If we get a 401 error, Session ID is likely expired - try OAuth2
+            print(f"ContentVersion result: {content_version}")
             if content_version.get('status') == 'error':
-                error_msg = content_version.get('message', '')
-                if '401' in error_msg or 'Unauthorized' in error_msg:
-                    print(f"\n⚠️  Session ID appears to be expired (401 Unauthorized)", flush=True)
-                    print(f"Attempting OAuth2 authentication as fallback...", flush=True)
-                    
-                    # Clear the invalid access token
-                    self.access_token = None
-                    
-                    # Try OAuth2 authentication
-                    if self.client_id and self.client_secret and self.username and self.password:
-                        print(f"Falling back to OAuth2 password flow...", flush=True)
-                        # Temporarily clear session_id to force OAuth2
-                        original_session_id = self.session_id
-                        self.session_id = None
-                        
-                        if await self.authenticate():
-                            print(f"OAuth2 authentication successful! Retrying file upload...", flush=True)
-                            # Retry ContentVersion creation with OAuth2 token
-                            content_version = await self.create_content_version(file_path, file_name)
-                            print(f"ContentVersion result (OAuth2): {content_version}", flush=True)
-                            
-                            # Restore session_id for future use
-                            self.session_id = original_session_id
-                        else:
-                            print(f"OAuth2 authentication also failed", flush=True)
-                            # Restore session_id
-                            self.session_id = original_session_id
-                            return {"status": "error", "message": "Both Session ID and OAuth2 authentication failed"}
-                    else:
-                        print(f"OAuth2 credentials not available for fallback", flush=True)
-                        return {"status": "error", "message": "Session ID expired and OAuth2 fallback not available"}
-                
-                if content_version.get('status') == 'error':
-                    return content_version
+                return content_version
             
             # Step 2: Get ContentDocument ID from ContentVersion
             print(f"=== STEP 2: Getting ContentDocument ID ===")
@@ -399,49 +398,16 @@ class SalesforceAPI:
                 'Content-Type': 'application/json'
             }
             
-            print(f"Making ContentVersion API call to: {url}", flush=True)
-            print(f"Authorization header: Bearer {self.access_token[:20]}... (length: {len(self.access_token)})", flush=True)
-            print(f"File name: {file_name}, File size: {len(file_content)} bytes", flush=True)
-            
             response = requests.post(url, headers=headers, json=content_version_data)
-            
-            print(f"Response status: {response.status_code}", flush=True)
-            print(f"Response headers: {dict(response.headers)}", flush=True)
-            
-            if response.status_code == 401:
-                print(f"=== 401 UNAUTHORIZED ERROR ===", flush=True)
-                print(f"Full response text: {response.text}", flush=True)
-                try:
-                    error_json = response.json()
-                    print(f"Error JSON: {error_json}", flush=True)
-                except:
-                    pass
-                print(f"=== END 401 ERROR ===", flush=True)
-            
             response.raise_for_status()
             
             result = response.json()
-            print(f"ContentVersion created successfully: {result.get('id', 'N/A')}", flush=True)
             return {
                 "status": "success",
                 "id": result['id']
             }
             
-        except requests.exceptions.HTTPError as e:
-            error_msg = f"ContentVersion creation failed: {e.response.status_code} {e.response.reason}"
-            if e.response.status_code == 401:
-                error_msg += " - Authentication failed (Session ID may be expired)"
-            try:
-                error_detail = e.response.json()
-                error_msg += f" - {error_detail}"
-            except:
-                error_msg += f" - {e.response.text[:200]}"
-            print(f"HTTP Error: {error_msg}", flush=True)
-            return {"status": "error", "message": error_msg}
         except Exception as e:
-            print(f"Exception in create_content_version: {str(e)}", flush=True)
-            import traceback
-            print(f"Traceback: {traceback.format_exc()}", flush=True)
             return {"status": "error", "message": f"ContentVersion creation failed: {str(e)}"}
     
     async def get_content_document_id(self, content_version_id: str) -> Optional[str]:
