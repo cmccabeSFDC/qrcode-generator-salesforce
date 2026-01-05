@@ -268,8 +268,15 @@ async def add_company_logo(qr_img, logo_url):
 @app.get("/form/{record_id}")
 async def show_upload_form(record_id: str, company_logo_url: str = None, file_name: str = None, session_token: str = None, instance_url: str = None):
     """Display the upload form for file submission"""
-    # CRITICAL DEBUG: Log what we received - FORCE IMMEDIATE OUTPUT
+    # ABSOLUTE FIRST LINE - This MUST appear in logs if function is called
     import sys
+    sys.stderr.write("!!! FORM FUNCTION CALLED - v57 !!!\n")
+    sys.stderr.flush()
+    sys.stdout.write("!!! FORM FUNCTION CALLED - v57 !!!\n")
+    sys.stdout.flush()
+    print("!!! FORM FUNCTION CALLED - v57 !!!", file=sys.stderr, flush=True)
+    print("!!! FORM FUNCTION CALLED - v57 !!!", flush=True)
+    # CRITICAL DEBUG: Log what we received - FORCE IMMEDIATE OUTPUT
     sys.stdout.write("=== FORM PAGE REQUEST DEBUG ===\n")
     sys.stdout.flush()
     print(f"=== FORM PAGE REQUEST DEBUG ===", flush=True)
