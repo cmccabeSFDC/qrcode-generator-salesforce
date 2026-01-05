@@ -398,7 +398,16 @@ class SalesforceAPI:
                 'Content-Type': 'application/json'
             }
             
+            print(f"Making ContentVersion API call to: {url}", flush=True)
+            print(f"Authorization header: Bearer {self.access_token[:30]}... (length: {len(self.access_token)})", flush=True)
             response = requests.post(url, headers=headers, json=content_version_data)
+            
+            # Log response details for debugging
+            print(f"Response status: {response.status_code}", flush=True)
+            if response.status_code != 200:
+                print(f"Response text: {response.text}", flush=True)
+                print(f"Response headers: {dict(response.headers)}", flush=True)
+            
             response.raise_for_status()
             
             result = response.json()
@@ -407,8 +416,16 @@ class SalesforceAPI:
                 "id": result['id']
             }
             
+        except requests.exceptions.HTTPError as e:
+            error_msg = f"ContentVersion creation failed: {str(e)}"
+            if hasattr(e.response, 'text'):
+                error_msg += f" - Response: {e.response.text}"
+            print(f"HTTP Error: {error_msg}", flush=True)
+            return {"status": "error", "message": error_msg}
         except Exception as e:
-            return {"status": "error", "message": f"ContentVersion creation failed: {str(e)}"}
+            error_msg = f"ContentVersion creation failed: {str(e)}"
+            print(f"Exception: {error_msg}", flush=True)
+            return {"status": "error", "message": error_msg}
     
     async def get_content_document_id(self, content_version_id: str) -> Optional[str]:
         """Get ContentDocument ID from ContentVersion ID"""

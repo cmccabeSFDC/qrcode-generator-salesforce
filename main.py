@@ -762,10 +762,16 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                     const result = await response.json();
                     
                     if (response.ok) {{
-                        showMessage('File uploaded successfully! You may now close this window.', 'success');
-                        document.getElementById('uploadForm').style.display = 'none';
+                        // Check if Salesforce actually succeeded
+                        if (result.salesforce_result && result.salesforce_result.status === 'error') {{
+                            showMessage('Error: ' + (result.salesforce_result.message || 'Upload failed'), 'error');
+                            console.error('Salesforce error:', result.salesforce_result);
+                        }} else {{
+                            showMessage('File uploaded successfully! You may now close this window.', 'success');
+                            document.getElementById('uploadForm').style.display = 'none';
+                        }}
                     }} else {{
-                        showMessage('Error: ' + result.detail, 'error');
+                        showMessage('Error: ' + (result.detail || 'Upload failed'), 'error');
                     }}
                 }} catch (error) {{
                     showMessage('Error uploading file: ' + error.message, 'error');
@@ -939,6 +945,15 @@ async def upload_file(
         )
         print(f"Salesforce result: {salesforce_result}", flush=True)
         print(f"=== END UPLOAD FILE ENDPOINT DEBUG ===", flush=True)
+        
+        # Check if Salesforce upload actually succeeded
+        if salesforce_result.get('status') == 'error':
+            error_message = salesforce_result.get('message', 'Unknown error')
+            print(f"Salesforce upload failed: {error_message}", flush=True)
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Salesforce upload failed: {error_message}"
+            )
         
         return {
             "message": "File uploaded successfully",
