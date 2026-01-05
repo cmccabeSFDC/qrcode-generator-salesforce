@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Form, File, UploadFile
+from fastapi import FastAPI, HTTPException, Form, File, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,6 +12,8 @@ import base64
 import os
 import sys
 import uuid
+import html
+import time
 from datetime import datetime
 from salesforce_integration import salesforce_api
 
@@ -264,8 +266,31 @@ async def add_company_logo(qr_img, logo_url):
         return qr_img
 
 @app.get("/form/{record_id}")
-async def show_upload_form(record_id: str, company_logo_url: str = None, file_name: str = None):
+async def show_upload_form(record_id: str, company_logo_url: str = None, file_name: str = None, session_token: str = None, instance_url: str = None):
     """Display the upload form for file submission"""
+    # ABSOLUTE FIRST LINE - This MUST appear in logs if function is called
+    import sys
+    sys.stderr.write("!!! FORM FUNCTION CALLED - v57 !!!\n")
+    sys.stderr.flush()
+    sys.stdout.write("!!! FORM FUNCTION CALLED - v57 !!!\n")
+    sys.stdout.flush()
+    print("!!! FORM FUNCTION CALLED - v57 !!!", file=sys.stderr, flush=True)
+    print("!!! FORM FUNCTION CALLED - v57 !!!", flush=True)
+    # CRITICAL DEBUG: Log what we received - FORCE IMMEDIATE OUTPUT
+    sys.stdout.write("=== FORM PAGE REQUEST DEBUG ===\n")
+    sys.stdout.flush()
+    print(f"=== FORM PAGE REQUEST DEBUG ===", flush=True)
+    print(f"record_id: {record_id}", flush=True)
+    print(f"session_token: {session_token[:50] + '...' if session_token and len(session_token) > 50 else (session_token if session_token else 'NOT PROVIDED')}", flush=True)
+    print(f"session_token length: {len(session_token) if session_token else 0}", flush=True)
+    print(f"instance_url: {instance_url if instance_url else 'NOT PROVIDED'}", flush=True)
+    print(f"file_name: {file_name}", flush=True)
+    print(f"company_logo_url: {company_logo_url}", flush=True)
+    
+    # Ensure we have values (even if empty strings)
+    session_token = session_token or ''
+    instance_url = instance_url or ''
+    
     form_html = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -335,12 +360,102 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
             }}
         </style>
     </head>
-    <body>
+    <body onload="console.log('BODY onload event fired - JavaScript is working!');">
+        <!-- JAVASCRIPT THAT RUNS ON PAGE LOAD - RIGHT AFTER BODY TAG -->
+        <script>
+            // THIS RUNS IMMEDIATELY WHEN SCRIPT TAG IS PARSED
+            console.log('========================================');
+            console.log('=== JAVASCRIPT RUNNING ON PAGE LOAD ===');
+            console.log('=== This script runs IMMEDIATELY after <body> tag ===');
+            console.log('=== If you see this in console, JavaScript is working! ===');
+            console.log('========================================');
+            
+            // Read session token from URL
+            var urlParams = new URLSearchParams(window.location.search);
+            var sessionToken = urlParams.get('session_token');
+            var instanceUrl = urlParams.get('instance_url');
+            
+            console.log('=== READING SESSION TOKEN FROM URL ===');
+            console.log('Full URL:', window.location.href);
+            console.log('URL Search (query string):', window.location.search);
+            
+            if (sessionToken) {{
+                console.log('✓✓✓ SESSION TOKEN FOUND IN URL! ✓✓✓');
+                console.log('Session Token (COMPLETE):', sessionToken);
+                console.log('Session Token Length:', sessionToken.length, 'characters');
+                console.log('Session Token First 30 chars:', sessionToken.substring(0, 30));
+                console.log('Session Token Last 30 chars:', sessionToken.substring(sessionToken.length - 30));
+            }} else {{
+                console.log('✗✗✗ SESSION TOKEN NOT FOUND IN URL ✗✗✗');
+                console.log('URL Search parameter:', window.location.search);
+            }}
+            
+            console.log('Instance URL:', instanceUrl || 'NOT FOUND');
+            console.log('========================================');
+            
+            // Create BIG visible indicator that JavaScript is running
+            var jsBox = document.createElement('div');
+            jsBox.style.cssText = 'background: #28a745; color: white; padding: 25px; margin: 15px; font-weight: bold; font-size: 20px; text-align: center; border: 5px solid #155724; border-radius: 10px;';
+            jsBox.innerHTML = '<div style="font-size: 24px;">✓✓✓ JAVASCRIPT IS RUNNING ON PAGE LOAD! ✓✓✓</div>' +
+                '<div style="font-size: 14px; margin-top: 10px;">Session Token from URL: ' + (sessionToken ? '✓ FOUND (' + sessionToken.length + ' chars)' : '✗ NOT FOUND') + '</div>' +
+                '<div style="font-size: 12px; margin-top: 5px;">Check browser console (F12) for full session token</div>';
+            document.body.insertBefore(jsBox, document.body.firstChild);
+        </script>
+        
+        <!-- VERSION IDENTIFIER - If you see v55, new code is loaded -->
+        <div style="background: purple; color: white; padding: 10px; text-align: center; font-weight: bold; font-size: 16px;">
+            FORM VERSION: v55 - JavaScript runs on page load (see green box above) - Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        </div>
+        
+        <!-- Check if JavaScript is enabled -->
+        <noscript>
+            <div style="background: #f8d7da; padding: 20px; margin: 20px; border: 2px solid #dc3545; border-radius: 5px;">
+                <strong>⚠️ JavaScript is Disabled</strong><br>
+                This form requires JavaScript to function. Please enable JavaScript in your browser settings.
+            </div>
+        </noscript>
+        
         <div class="container">
             <h1>File Upload</h1>
+            
+            <!-- Instructions for debugging -->
+            <div style="background: #e7f3ff; padding: 10px; margin: 10px 0; border: 2px solid #0070d2; border-radius: 5px; font-size: 12px;">
+                <strong>🔍 Debug Instructions:</strong><br>
+                1. Press F12 to open browser console<br>
+                2. Look for red box below - if it turns green, JavaScript is running<br>
+                3. Check console for detailed logs<br>
+                4. If nothing appears, JavaScript may be disabled or blocked<br>
+                5. <a href="javascript:alert('JavaScript works!');" style="color: #0070d2;">Click here to test JavaScript</a>
+            </div>
+            
+            <!-- Server-side debug info (always visible, no JavaScript needed) -->
+            <div style="background: #e7f3ff; padding: 15px; margin: 10px 0; border: 2px solid #0070d2; border-radius: 5px; text-align: left; font-family: monospace; font-size: 11px;">
+                <strong>📋 Server-Side Debug (from URL parameters):</strong><br>
+                Session Token: {session_token[:30] + '...' if session_token and len(session_token) > 30 else (session_token if session_token else 'NOT PROVIDED')}<br>
+                Session Token Length: {len(session_token) if session_token else 0} chars<br>
+                Instance URL: {instance_url if instance_url else 'NOT PROVIDED'}<br>
+                <small>This shows what the server received from the URL. JavaScript will read the same values.</small>
+            </div>
+            
             {f'<img src="{company_logo_url}" alt="Company Logo" class="logo" onerror="this.style.display=&quot;none&quot;">' if company_logo_url else ''}
             
-            <form id="uploadForm" enctype="multipart/form-data">
+            <!-- VERIFICATION: Show hidden field values (for debugging) -->
+            <div style="background: #d4edda; padding: 15px; margin: 10px 0; border: 2px solid #28a745; border-radius: 5px; font-family: monospace; font-size: 11px;">
+                <strong>✅ Hidden Fields (Server-Side Set):</strong><br>
+                session_token: {session_token[:50] + '...' if session_token and len(session_token) > 50 else (session_token if session_token else 'NOT SET')}<br>
+                instance_url: {instance_url if instance_url else 'NOT SET'}<br>
+                record_id: {record_id}<br>
+                file_name: {file_name or 'uploaded_file'}<br>
+                <small>These values are embedded in the form below (view page source to verify)</small>
+            </div>
+            
+            <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+                <!-- Hidden fields - Set server-side so they work even without JavaScript -->
+                <input type="hidden" id="sessionTokenField" name="session_token" value="{html.escape(session_token) if session_token else ''}">
+                <input type="hidden" id="instanceUrlField" name="instance_url" value="{html.escape(instance_url) if instance_url else ''}">
+                <input type="hidden" name="record_id" value="{html.escape(record_id)}">
+                <input type="hidden" name="file_name" value="{html.escape(file_name) if file_name else 'uploaded_file'}">
+                
                 <div class="form-group">
                     <label for="file">Select File to Upload:</label>
                     <input type="file" id="file" name="file" required>
@@ -352,23 +467,291 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
             
             <div id="message"></div>
         </div>
+        
+        <!-- SIMPLE TEST - Should appear immediately if JavaScript works -->
+        <div id="jsTest" style="background: red; color: white; padding: 10px; margin: 10px; font-weight: bold;">
+            ⚠️ JavaScript NOT running (this should be replaced by script if JS works)
+        </div>
+        
+        <!-- HTML-only test (no JavaScript needed) -->
+        <div style="background: blue; color: white; padding: 10px; margin: 10px; font-weight: bold;">
+            ✓ HTML is loading correctly (this appears without JavaScript)
+        </div>
+
+        <!-- IMMEDIATE SCRIPT - Runs before DOMContentLoaded -->
+        <script>
+            // SIMPLEST POSSIBLE TEST - This should ALWAYS run
+            console.log('TEST 1: Script tag is being parsed');
+            console.log('TEST 2: If you see this, JavaScript is running!');
+            
+            // Replace the test div to prove JavaScript is running
+            try {{
+                const testDiv = document.getElementById('jsTest');
+                if (testDiv) {{
+                    testDiv.style.background = 'green';
+                    testDiv.innerHTML = '✓ JavaScript IS running! Check browser console (F12) for detailed logs.';
+                }} else {{
+                    console.error('jsTest div not found!');
+                }}
+            }} catch (e) {{
+                console.error('Error updating test div:', e);
+            }}
+            
+            // This runs IMMEDIATELY when script tag is parsed
+            (function() {{
+                console.log('========================================');
+                console.log('=== SCRIPT TAG 1: IMMEDIATE SCRIPT ===');
+                console.log('=== JAVASCRIPT IS RUNNING: ✓ YES ===');
+                console.log('=== Script tag loaded: ✓ YES ===');
+                
+                // Check if script tags are in DOM
+                const allScripts = document.getElementsByTagName('script');
+                console.log('=== SCRIPT TAGS CHECK ===');
+                console.log('Total script tags found in DOM:', allScripts.length);
+                console.log('Current script tag index:', Array.from(allScripts).indexOf(document.currentScript));
+                console.log('Script tags are loading: ✓ YES');
+                console.log('========================================');
+                console.log('Current URL:', window.location.href);
+                console.log('URL Search (query string):', window.location.search);
+                
+                // Try to read session token immediately
+                try {{
+                    console.log('--- Reading URL Parameters ---');
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const sessionToken = urlParams.get('session_token');
+                    const instanceUrl = urlParams.get('instance_url');
+                    
+                    console.log('========================================');
+                    console.log('=== SESSION TOKEN READ FROM URL ===');
+                    if (sessionToken) {{
+                        console.log('✓ SESSION TOKEN FOUND!');
+                        console.log('Session Token (FULL):', sessionToken);
+                        console.log('Session Token Length:', sessionToken.length, 'characters');
+                        console.log('Session Token Preview (first 30 chars):', sessionToken.substring(0, 30) + '...');
+                        console.log('Session Token Preview (last 30 chars):', '...' + sessionToken.substring(sessionToken.length - 30));
+                    }} else {{
+                        console.log('✗ SESSION TOKEN NOT FOUND IN URL');
+                        console.log('URL Search was:', window.location.search);
+                    }}
+                    console.log('========================================');
+                    
+                    if (instanceUrl) {{
+                        console.log('✓ INSTANCE URL FOUND:', instanceUrl);
+                    }} else {{
+                        console.log('✗ INSTANCE URL NOT FOUND IN URL');
+                    }}
+                    
+                    // Show visible indicator that script is running
+                    const indicator = document.createElement('div');
+                    indicator.id = 'jsIndicator';
+                    indicator.style.cssText = 'background: #fff3cd; padding: 15px; margin: 10px 0; border: 2px solid #ffc107; border-radius: 5px; font-weight: bold; text-align: left;';
+                    indicator.innerHTML = '<strong>🔍 JavaScript Status:</strong><br>' +
+                        'Script loaded: ✓ YES<br>' +
+                        'Session token in URL: ' + (sessionToken ? '✓ YES (' + sessionToken.length + ' chars)' : '✗ NO') + '<br>' +
+                        'Instance URL in URL: ' + (instanceUrl ? '✓ YES' : '✗ NO') + '<br>' +
+                        '<small>Check browser console (F12) for detailed logs</small>';
+                    document.body.insertBefore(indicator, document.body.firstChild);
+                }} catch (e) {{
+                    console.error('IMMEDIATE: Error:', e);
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.cssText = 'background: #f8d7da; padding: 15px; margin: 10px 0; border: 2px solid #dc3545; border-radius: 5px;';
+                    errorDiv.innerHTML = '<strong>ERROR:</strong> ' + e.message;
+                    document.body.insertBefore(errorDiv, document.body.firstChild);
+                }}
+            }})();
+        </script>
 
         <script>
-            document.getElementById('uploadForm').addEventListener('submit', async function(e) {{
-                e.preventDefault();
+            // Wait for DOM to be ready
+            console.log('=== SCRIPT TAG 2: DOMContentLoaded SCRIPT ===');
+            console.log('=== Script tag loaded: ✓ YES ===');
+            console.log('Waiting for DOM to be ready...');
+            
+            document.addEventListener('DOMContentLoaded', function() {{
+                console.log('========================================');
+                console.log('=== DOMContentLoaded FIRED ===');
+                console.log('=== JAVASCRIPT IS RUNNING: ✓ YES ===');
+                console.log('=== DOM is ready, processing form ===');
+                console.log('========================================');
                 
-                const formData = new FormData();
+                try {{
+                    // Get session token from URL parameters
+                    console.log('--- Step 1: Reading URL Parameters ---');
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const sessionToken = urlParams.get('session_token');
+                    const instanceUrl = urlParams.get('instance_url');
+                    
+                    console.log('========================================');
+                    console.log('=== SESSION TOKEN READ FROM URL (DOMContentLoaded) ===');
+                    if (sessionToken) {{
+                        console.log('✓ SESSION TOKEN FOUND!');
+                        console.log('Session Token (FULL):', sessionToken);
+                        console.log('Session Token Length:', sessionToken.length, 'characters');
+                        console.log('Session Token Preview (first 30 chars):', sessionToken.substring(0, 30) + '...');
+                        console.log('Session Token Preview (last 30 chars):', '...' + sessionToken.substring(sessionToken.length - 30));
+                    }} else {{
+                        console.log('✗ SESSION TOKEN NOT FOUND IN URL');
+                        console.log('URL Search was:', window.location.search);
+                    }}
+                    console.log('========================================');
+                    
+                    if (instanceUrl) {{
+                        console.log('✓ INSTANCE URL FOUND:', instanceUrl);
+                    }} else {{
+                        console.log('✗ INSTANCE URL NOT FOUND IN URL');
+                    }}
+                    
+                    // Display comprehensive status on page (ALWAYS VISIBLE)
+                    const container = document.querySelector('.container');
+                    const form = document.getElementById('uploadForm');
+                    
+                    if (!container) {{
+                        console.error('ERROR: .container element not found!');
+                        return;
+                    }}
+                    if (!form) {{
+                        console.error('ERROR: #uploadForm element not found!');
+                        return;
+                    }}
+                    
+                    const statusDiv = document.createElement('div');
+                    statusDiv.id = 'debugStatus';
+                    statusDiv.style.cssText = 'font-size: 11px; color: #333; margin: 10px 0; padding: 15px; background: #f0f0f0; border: 2px solid #0070d2; border-radius: 5px; text-align: left; font-family: monospace;';
+                    
+                    let debugHtml = '<strong style="color: #0070d2;">🔍 DEBUG INFORMATION</strong><br><br>';
+                    debugHtml += '<strong>Step 1: URL Parameters</strong><br>';
+                    debugHtml += 'Full URL: ' + window.location.href.substring(0, 100) + '...<br>';
+                    debugHtml += 'URL Search: ' + window.location.search + '<br><br>';
+                    
+                    debugHtml += '<strong>Step 2: Extracted Values</strong><br>';
+                    debugHtml += 'session_token: ' + (sessionToken ? '✓ FOUND (' + sessionToken.length + ' chars, starts with: ' + sessionToken.substring(0, 20) + '...)' : '✗ NOT FOUND') + '<br>';
+                    debugHtml += 'instance_url: ' + (instanceUrl ? '✓ FOUND (' + instanceUrl + ')' : '✗ NOT FOUND') + '<br><br>';
+                    
+                    debugHtml += '<strong>Step 3: Form Submission</strong><br>';
+                    debugHtml += '<span id="formSubmitStatus">Waiting for form submission...</span><br>';
+                    
+                    statusDiv.innerHTML = debugHtml;
+                    container.insertBefore(statusDiv, form);
+                    console.log('✓ Debug box inserted into page');
+                    
+                    // Set hidden field values from URL parameters
+                    console.log('--- Step 2: Setting Hidden Form Fields ---');
+                    const sessionTokenField = document.getElementById('sessionTokenField');
+                    const instanceUrlField = document.getElementById('instanceUrlField');
+                    
+                    console.log('Session Token Field found:', sessionTokenField ? '✓ YES' : '✗ NO');
+                    console.log('Instance URL Field found:', instanceUrlField ? '✓ YES' : '✗ NO');
+                    
+                    if (sessionToken && sessionTokenField) {{
+                        sessionTokenField.value = sessionToken;
+                        console.log('========================================');
+                        console.log('=== SESSION TOKEN SET IN HIDDEN FIELD ===');
+                        console.log('✓ Hidden field value set successfully!');
+                        console.log('Hidden field value (FULL):', sessionTokenField.value);
+                        console.log('Hidden field value length:', sessionTokenField.value.length, 'characters');
+                        console.log('Verification - Field value matches URL token:', sessionTokenField.value === sessionToken ? '✓ YES' : '✗ NO');
+                        console.log('========================================');
+                    }} else {{
+                        console.log('========================================');
+                        console.log('✗ FAILED TO SET SESSION TOKEN IN HIDDEN FIELD');
+                        console.log('Session Token from URL:', sessionToken ? 'EXISTS (' + sessionToken.length + ' chars)' : 'NULL/EMPTY');
+                        console.log('Session Token Field element:', sessionTokenField ? 'FOUND' : 'NOT FOUND');
+                        console.log('========================================');
+                    }}
+                    
+                    if (instanceUrl && instanceUrlField) {{
+                        instanceUrlField.value = instanceUrl;
+                        console.log('✓ Set instance_url hidden field value:', instanceUrl);
+                    }} else {{
+                        console.log('✗ Failed to set instance_url - URL:', instanceUrl ? 'EXISTS' : 'NULL', 'Field:', instanceUrlField ? 'FOUND' : 'NOT FOUND');
+                    }}
+                    
+                    // Verify script tags are present
+                    const allScripts = document.getElementsByTagName('script');
+                    console.log('--- Step 3: Verifying Script Tags ---');
+                    console.log('Total script tags in DOM:', allScripts.length);
+                    console.log('Script tags are loading: ✓ YES');
+                    
+                    // Update debug box to show hidden field values
+                    const submitStatusEl = document.getElementById('formSubmitStatus');
+                    if (submitStatusEl) {{
+                        submitStatusEl.innerHTML = 'Hidden fields set:<br>' +
+                            'session_token: ' + (sessionTokenField && sessionTokenField.value ? '✓ SET (' + sessionTokenField.value.length + ' chars)' : '✗ NOT SET') + '<br>' +
+                            'instance_url: ' + (instanceUrlField && instanceUrlField.value ? '✓ SET (' + instanceUrlField.value + ')' : '✗ NOT SET');
+                    }}
+                    
+                    // Final summary
+                    console.log('========================================');
+                    console.log('=== FINAL SUMMARY ===');
+                    console.log('JavaScript running: ✓ YES');
+                    console.log('Script tags loaded: ✓ YES (' + allScripts.length + ' tags found)');
+                    console.log('Session token in URL: ' + (sessionToken ? '✓ YES (' + sessionToken.length + ' chars)' : '✗ NO'));
+                    console.log('Session token in hidden field: ' + (sessionTokenField && sessionTokenField.value ? '✓ YES (' + sessionTokenField.value.length + ' chars)' : '✗ NO'));
+                    console.log('Instance URL in URL: ' + (instanceUrl ? '✓ YES' : '✗ NO'));
+                    console.log('Instance URL in hidden field: ' + (instanceUrlField && instanceUrlField.value ? '✓ YES' : '✗ NO'));
+                    console.log('Form ready for submission: ✓ YES');
+                    console.log('========================================');
+                    
+                    // Define showMessage function
+                    function showMessage(text, type) {{
+                        const messageDiv = document.getElementById('message');
+                        messageDiv.innerHTML = '<div class="' + type + '">' + text + '</div>';
+                    }}
+                    
+                    // Set up form submission handler - use standard form submission with hidden fields
+                    // Note: If JavaScript doesn't work, form will submit normally via action="/upload"
+                    form.addEventListener('submit', async function(e) {{
+                        // Only prevent default if we want to use async fetch (for better UX)
+                        // If this fails, form will submit normally via HTML action attribute
+                        e.preventDefault();
+                        
+                        // Update visible debug status
+                        const submitStatusEl = document.getElementById('formSubmitStatus');
+                        if (submitStatusEl) {{
+                            submitStatusEl.innerHTML = 'Form submitted! Sending with hidden fields...';
+                        }}
+                        
                 const fileInput = document.getElementById('file');
                 const file = fileInput.files[0];
                 
                 if (!file) {{
                     showMessage('Please select a file to upload.', 'error');
+                            if (submitStatusEl) {{
+                                submitStatusEl.innerHTML = '✗ ERROR: No file selected';
+                            }}
                     return;
                 }}
                 
-                formData.append('file', file);
-                formData.append('record_id', '{record_id}');
-                formData.append('file_name', '{file_name or "uploaded_file"}');
+                        // Create FormData from the form (this will include hidden fields automatically)
+                        const formData = new FormData(form);
+                        
+                        console.log('=== FORM SUBMISSION DEBUG ===');
+                        console.log('session_token hidden field value:', sessionTokenField ? sessionTokenField.value : 'FIELD NOT FOUND');
+                        console.log('instance_url hidden field value:', instanceUrlField ? instanceUrlField.value : 'FIELD NOT FOUND');
+                        
+                        // Debug: Log all FormData entries
+                        console.log('DEBUG: FormData entries (from form):');
+                        let allEntries = [];
+                        for (let pair of formData.entries()) {{
+                            if (pair[0] === 'session_token') {{
+                                const entry = pair[0] + ': ' + pair[1].substring(0, 30) + '... (' + pair[1].length + ' chars)';
+                                console.log('  ' + entry);
+                                allEntries.push(entry);
+                            }} else if (pair[0] === 'instance_url') {{
+                                const entry = pair[0] + ': ' + pair[1];
+                                console.log('  ' + entry);
+                                allEntries.push(entry);
+                            }} else {{
+                                const entry = pair[0] + ': ' + (typeof pair[1] === 'string' ? pair[1] : pair[1].name);
+                                console.log('  ' + entry);
+                                allEntries.push(entry);
+                            }}
+                        }}
+                        
+                        // Update visible debug
+                        if (submitStatusEl) {{
+                            submitStatusEl.innerHTML = '<strong>FormData Contents:</strong><br>' + allEntries.join('<br>');
+                        }}
                 
                 try {{
                     const response = await fetch('/upload', {{
@@ -387,23 +770,60 @@ async def show_upload_form(record_id: str, company_logo_url: str = None, file_na
                 }} catch (error) {{
                     showMessage('Error uploading file: ' + error.message, 'error');
                 }}
-            }});
+                    }}); // End form submit handler
+                }} catch (error) {{
+                    console.error('ERROR in debug script:', error);
+                    // Try to show error on page
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.cssText = 'color: red; padding: 10px; background: #ffe6e6; border: 2px solid red; margin: 10px 0;';
+                    errorDiv.innerHTML = 'ERROR: ' + error.message;
+                    document.body.insertBefore(errorDiv, document.body.firstChild);
+                }}
+            }}); // End DOMContentLoaded
             
-            function showMessage(text, type) {{
-                const messageDiv = document.getElementById('message');
-                messageDiv.innerHTML = '<div class="' + type + '">' + text + '</div>';
+            // Also run immediately if DOM is already loaded
+            if (document.readyState === 'loading') {{
+                // DOMContentLoaded will fire
+            }} else {{
+                // DOM is already loaded, trigger manually
+                document.dispatchEvent(new Event('DOMContentLoaded'));
             }}
         </script>
     </body>
     </html>
     """
-    return HTMLResponse(content=form_html)
+    # Add headers to prevent caching and allow scripts
+    import time
+    timestamp = int(time.time() * 1000)  # milliseconds for uniqueness
+    headers = {
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        "Last-Modified": f"{datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT')}",
+        "ETag": f'"{timestamp}"'
+    }
+    # FORCE IMMEDIATE OUTPUT - Multiple methods to ensure logs appear
+    import sys
+    sys.stdout.write(f"=== RETURNING HTML RESPONSE (v56) - Timestamp: {timestamp} ===\n")
+    sys.stdout.write(f"HTML length: {len(form_html)} characters\n")
+    sys.stdout.write(f"JavaScript present: {'YES' if '<script>' in form_html else 'NO'}\n")
+    sys.stdout.write(f"Number of <script> tags: {form_html.count('<script>')}\n")
+    sys.stdout.flush()
+    print(f"=== RETURNING HTML RESPONSE (v56) - Timestamp: {timestamp} ===", flush=True)
+    print(f"HTML length: {len(form_html)} characters", flush=True)
+    print(f"JavaScript present: {'YES' if '<script>' in form_html else 'NO'}", flush=True)
+    print(f"Number of <script> tags: {form_html.count('<script>')}", flush=True)
+    return HTMLResponse(content=form_html, headers=headers)
 
 @app.post("/upload")
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     record_id: str = Form(...),
-    file_name: str = Form(...)
+    file_name: str = Form(...),
+    session_token: str = Form(""),
+    instance_url: str = Form("")
 ):
     """Handle file upload and send to Salesforce"""
     try:
@@ -412,6 +832,78 @@ async def upload_file(
         print(f"File content type: {file.content_type}", flush=True)
         print(f"Record ID: {record_id}", flush=True)
         print(f"File name: {file_name}", flush=True)
+        
+        # Log what FastAPI parsed from Form parameters
+        print(f"=== FASTAPI FORM PARAMETERS ===", flush=True)
+        print(f"session_token from Form(): '{session_token}'", flush=True)
+        print(f"session_token type: {type(session_token)}", flush=True)
+        print(f"session_token length: {len(session_token) if session_token else 0}", flush=True)
+        print(f"session_token is empty string: {session_token == ''}", flush=True)
+        print(f"session_token is None: {session_token is None}", flush=True)
+        print(f"instance_url from Form(): '{instance_url}'", flush=True)
+        print(f"instance_url type: {type(instance_url)}", flush=True)
+        print(f"instance_url length: {len(instance_url) if instance_url else 0}", flush=True)
+        
+        # Normalize: treat empty strings as None
+        session_token_original = session_token
+        instance_url_original = instance_url
+        if session_token == "":
+            session_token = None
+        if instance_url == "":
+            instance_url = None
+        
+        print(f"=== AFTER NORMALIZATION ===", flush=True)
+        print(f"session_token: {session_token} (was: '{session_token_original}')", flush=True)
+        print(f"instance_url: {instance_url} (was: '{instance_url_original}')", flush=True)
+        
+        # Also check AppLink headers (in case request came from Salesforce)
+        print(f"=== CHECKING APPLINK HEADERS ===", flush=True)
+        applink_auth = request.headers.get("Authorization")
+        applink_instance = request.headers.get("X-Salesforce-Instance-Url") or request.headers.get("X-Salesforce-Instance")
+        print(f"Authorization header: {'SET' if applink_auth else 'NOT SET'}", flush=True)
+        print(f"Instance URL header: {applink_instance if applink_instance else 'NOT SET'}", flush=True)
+        
+        # Determine authentication method (priority: AppLink > Form session token > OAuth2)
+        auth_header = None
+        print(f"=== AUTHENTICATION METHOD SELECTION ===", flush=True)
+        
+        # Priority 1: AppLink headers (if request came from Salesforce)
+        if applink_auth:
+            auth_header = applink_auth
+            instance_url = applink_instance or instance_url
+            print(f"✓ Using AppLink authentication (from headers)", flush=True)
+            print(f"  Authorization header: SET ({len(applink_auth)} chars)", flush=True)
+            if applink_instance:
+                print(f"  Instance URL from AppLink: {applink_instance}", flush=True)
+        
+        # Priority 2: Session token from form (if user scanned QR code)
+        elif session_token:
+            auth_header = f"Bearer {session_token}"
+            print(f"✓ Using session token from form", flush=True)
+            print(f"  Session token length: {len(session_token)}", flush=True)
+            print(f"  Session token preview: {session_token[:30]}...", flush=True)
+            if instance_url:
+                print(f"  Instance URL from form: {instance_url}", flush=True)
+        
+        # Priority 3: OAuth2 fallback (will be handled in salesforce_integration.py)
+        else:
+            print(f"✗ No AppLink headers or session token - will use OAuth2 fallback", flush=True)
+        
+        # FINAL SUMMARY - All variables and their status
+        print(f"", flush=True)
+        print(f"=== FINAL VARIABLE STATUS SUMMARY ===", flush=True)
+        print(f"1. Form Parameters (from FastAPI):", flush=True)
+        print(f"   - session_token: {'✓ SET (' + str(len(session_token_original)) + ' chars)' if session_token_original else '✗ EMPTY/NONE'}", flush=True)
+        print(f"   - instance_url: {'✓ SET (' + instance_url_original + ')' if instance_url_original else '✗ EMPTY/NONE'}", flush=True)
+        print(f"2. AppLink Headers (from request):", flush=True)
+        print(f"   - Authorization: {'✓ SET (' + str(len(applink_auth)) + ' chars)' if applink_auth else '✗ NOT SET'}", flush=True)
+        print(f"   - Instance URL: {'✓ SET (' + applink_instance + ')' if applink_instance else '✗ NOT SET'}", flush=True)
+        print(f"3. Selected Authentication:", flush=True)
+        print(f"   - Method: {'AppLink' if applink_auth else ('Session Token' if session_token else 'OAuth2 Fallback')}", flush=True)
+        print(f"   - auth_header: {'✓ SET (' + str(len(auth_header)) + ' chars)' if auth_header else '✗ NOT SET'}", flush=True)
+        print(f"   - instance_url (final): {'✓ SET (' + instance_url + ')' if instance_url else '✗ NOT SET'}", flush=True)
+        print(f"=== END SUMMARY ===", flush=True)
+        print(f"", flush=True)
         
         # Generate unique filename
         file_extension = os.path.splitext(file.filename)[1]
@@ -436,7 +928,15 @@ async def upload_file(
         
         # Integrate with Salesforce API to attach the file
         print(f"Calling Salesforce API to upload file...", flush=True)
-        salesforce_result = await salesforce_api.upload_file_to_record(record_id, file_path, file_name)
+        
+        # Pass AppLink authentication if available
+        salesforce_result = await salesforce_api.upload_file_to_record(
+            record_id, 
+            file_path, 
+            file_name,
+            applink_auth_token=auth_header,
+            applink_instance_url=instance_url
+        )
         print(f"Salesforce result: {salesforce_result}", flush=True)
         print(f"=== END UPLOAD FILE ENDPOINT DEBUG ===", flush=True)
         
