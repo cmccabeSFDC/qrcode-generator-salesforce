@@ -74,10 +74,25 @@ class SalesforceAPI:
                 # Don't log the actual password, but log the data structure
                 print(f"Auth data (password hidden): grant_type={data['grant_type']}, client_id={data['client_id']}, username={data['username']}", flush=True)
                 
-                # For password flow, always use login.salesforce.com (My Domain URLs often don't work)
-                # Try login.salesforce.com first (most reliable for password flow)
-                auth_url = "https://login.salesforce.com/services/oauth2/token"
-                print(f"Attempting OAuth2 with login.salesforce.com (password flow requires this): {auth_url}", flush=True)
+                # Detect if this is a sandbox org (sandbox orgs use test.salesforce.com)
+                # Check if instance URL contains common sandbox indicators
+                is_sandbox = (
+                    'sandbox' in self.base_url.lower() or
+                    'test' in self.base_url.lower() or
+                    'trail' in self.base_url.lower() or
+                    'scratch' in self.base_url.lower() or
+                    '.cs' in self.base_url.lower() or  # Custom domain sandbox indicator
+                    '--' in self.base_url  # Sandbox orgs often have double dashes
+                )
+                
+                # Use test.salesforce.com for sandbox, login.salesforce.com for production
+                if is_sandbox:
+                    auth_url = "https://test.salesforce.com/services/oauth2/token"
+                    print(f"Detected sandbox org. Using test.salesforce.com for OAuth2: {auth_url}", flush=True)
+                else:
+                    auth_url = "https://login.salesforce.com/services/oauth2/token"
+                    print(f"Using login.salesforce.com for OAuth2: {auth_url}", flush=True)
+                
                 print(f"Making OAuth2 request...", flush=True)
                 
                 response = requests.post(auth_url, data=data)
@@ -85,18 +100,23 @@ class SalesforceAPI:
                 print(f"Response headers: {dict(response.headers)}", flush=True)
                 print(f"Response text: {response.text}", flush=True)
                 
-                # If login.salesforce.com fails, try My Domain URL as fallback (unlikely to work for password flow)
+                # If first attempt fails, try the other endpoint
                 if response.status_code == 400:
-                    print(f"\n⚠️  login.salesforce.com failed, trying My Domain URL as fallback...", flush=True)
-                    auth_url_fallback = f"{self.base_url}/services/oauth2/token"
-                    print(f"Attempting OAuth2 with My Domain URL: {auth_url_fallback}", flush=True)
+                    if is_sandbox:
+                        print(f"\n⚠️  test.salesforce.com failed, trying login.salesforce.com as fallback...", flush=True)
+                        auth_url_fallback = "https://login.salesforce.com/services/oauth2/token"
+                    else:
+                        print(f"\n⚠️  login.salesforce.com failed, trying test.salesforce.com as fallback...", flush=True)
+                        auth_url_fallback = "https://test.salesforce.com/services/oauth2/token"
+                    
+                    print(f"Attempting OAuth2 with fallback URL: {auth_url_fallback}", flush=True)
                     
                     response_fallback = requests.post(auth_url_fallback, data=data)
                     print(f"Fallback response status: {response_fallback.status_code}", flush=True)
                     print(f"Fallback response text: {response_fallback.text}", flush=True)
                     
                     if response_fallback.status_code == 200:
-                        print(f"✅ SUCCESS with My Domain URL!", flush=True)
+                        print(f"✅ SUCCESS with fallback URL!", flush=True)
                         response = response_fallback
                     else:
                         print(f"❌ Fallback also failed, using original response for error analysis", flush=True)
