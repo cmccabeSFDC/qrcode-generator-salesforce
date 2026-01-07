@@ -74,9 +74,10 @@ class SalesforceAPI:
                 # Don't log the actual password, but log the data structure
                 print(f"Auth data (password hidden): grant_type={data['grant_type']}, client_id={data['client_id']}, username={data['username']}", flush=True)
                 
-                # Try My Domain URL first
-                auth_url = f"{self.base_url}/services/oauth2/token"
-                print(f"Attempting OAuth2 with My Domain URL: {auth_url}", flush=True)
+                # For password flow, always use login.salesforce.com (My Domain URLs often don't work)
+                # Try login.salesforce.com first (most reliable for password flow)
+                auth_url = "https://login.salesforce.com/services/oauth2/token"
+                print(f"Attempting OAuth2 with login.salesforce.com (password flow requires this): {auth_url}", flush=True)
                 print(f"Making OAuth2 request...", flush=True)
                 
                 response = requests.post(auth_url, data=data)
@@ -84,18 +85,18 @@ class SalesforceAPI:
                 print(f"Response headers: {dict(response.headers)}", flush=True)
                 print(f"Response text: {response.text}", flush=True)
                 
-                # If My Domain URL fails with 400, try login.salesforce.com as fallback
+                # If login.salesforce.com fails, try My Domain URL as fallback (unlikely to work for password flow)
                 if response.status_code == 400:
-                    print(f"\n⚠️  My Domain URL failed, trying login.salesforce.com as fallback...", flush=True)
-                    auth_url_fallback = "https://login.salesforce.com/services/oauth2/token"
-                    print(f"Attempting OAuth2 with login.salesforce.com: {auth_url_fallback}", flush=True)
+                    print(f"\n⚠️  login.salesforce.com failed, trying My Domain URL as fallback...", flush=True)
+                    auth_url_fallback = f"{self.base_url}/services/oauth2/token"
+                    print(f"Attempting OAuth2 with My Domain URL: {auth_url_fallback}", flush=True)
                     
                     response_fallback = requests.post(auth_url_fallback, data=data)
                     print(f"Fallback response status: {response_fallback.status_code}", flush=True)
                     print(f"Fallback response text: {response_fallback.text}", flush=True)
                     
                     if response_fallback.status_code == 200:
-                        print(f"✅ SUCCESS with login.salesforce.com!", flush=True)
+                        print(f"✅ SUCCESS with My Domain URL!", flush=True)
                         response = response_fallback
                     else:
                         print(f"❌ Fallback also failed, using original response for error analysis", flush=True)
